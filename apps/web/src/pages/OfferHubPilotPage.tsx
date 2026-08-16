@@ -962,6 +962,15 @@ export function OfferHubPilotPage({ goHome }: { goHome: () => void }) {
               Live
             </button>
           </div>
+          <a
+            href="https://www.offer-hub.org/labs/sub-rosa"
+            className="secondary-action compact"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <ExternalLink size={15} />
+            Offer-Hub pilot
+          </a>
           <a href="#/docs" className="secondary-action compact">Docs</a>
           <button type="button" className="secondary-action compact" onClick={connect} disabled={busy !== null}>
             {address ? shortAddress(address) : busy === "connect" ? "Connecting..." : "Connect wallet"}
