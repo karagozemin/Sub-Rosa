@@ -15,6 +15,7 @@ import { TrustlessWorkPilotPage } from "./pages/TrustlessWorkPilotPage";
 import { OfferHubPilotPage } from "./pages/OfferHubPilotPage";
 import { ActaPilotPage } from "./pages/ActaPilotPage";
 import { OpenX402PilotPage } from "./pages/OpenX402PilotPage";
+import { SiteFooter } from "./components/SiteFooter";
 import { ToastProvider } from "./ui/Toast";
 
 export default function App() {
@@ -72,6 +73,7 @@ export default function App() {
           )}
         </>
       )}
+      <SiteFooter />
     </ToastProvider>
   );
 }
