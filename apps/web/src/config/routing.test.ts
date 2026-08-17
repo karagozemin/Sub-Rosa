@@ -7,6 +7,7 @@ import {
   offerHubPilotRoundIdFromHash,
   openX402PilotRoundIdFromHash,
   pilotRoundIdFromHash,
+  publishedReceiptSlugFromHash,
   routeFromHash,
   trustlessWorkPilotRoundIdFromHash,
 } from "./routing";
@@ -93,4 +94,17 @@ test("docs route and navigation use the canonical hash", () => {
     useCase: "auction",
   });
   assert.equal(hashFor("docs"), "#/docs");
+});
+
+test("published receipt routes accept stable evidence slugs", () => {
+  assert.deepEqual(routeFromHash("#/receipt/instawards-auction-1"), {
+    page: "publishedReceipt",
+    useCase: "auction",
+    receiptSlug: "instawards-auction-1",
+  });
+  assert.equal(
+    publishedReceiptSlugFromHash("#/receipt/instawards-auction-1"),
+    "instawards-auction-1",
+  );
+  assert.equal(publishedReceiptSlugFromHash("#/receipt/INVALID"), "");
 });

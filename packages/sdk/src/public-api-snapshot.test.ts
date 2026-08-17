@@ -20,6 +20,7 @@ const EXPECTED_EXPORTS = [
   "MAX_V2_PARTICIPANTS",
   "PAYLOAD_ENVELOPE_VERSION",
   "PAYLOAD_HEADER_BYTES",
+  "PUBLISHED_AUCTION_EVIDENCE_VERSION",
   "QUICKNET_HASH",
   "RECEIPT_VERSION",
   "SEALED_PROPOSAL_SCHEMA_ID",
@@ -72,6 +73,7 @@ const EXPECTED_EXPORTS = [
   "openPayload",
   "parseReceipt",
   "parseReceiptV2",
+  "parsePublishedAuctionEvidence",
   "payloadCommitment",
   "quicknet",
   "redactReceipt",
@@ -80,6 +82,7 @@ const EXPECTED_EXPORTS = [
   "runMainnetReadiness",
   "serializeReceipt",
   "serializeReceiptV2",
+  "serializePublishedAuctionEvidence",
   "sealAssetBid",
   "sealIdentity",
   "sealPayload",
@@ -95,6 +98,7 @@ const EXPECTED_EXPORTS = [
   "transactionExplorerUrl",
   "verifyReceipt",
   "verifyReceiptV2",
+  "verifyPublishedAuctionEvidence",
   "verifySettledRoundProof",
 ];
 

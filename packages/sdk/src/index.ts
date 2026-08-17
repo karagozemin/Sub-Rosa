@@ -145,6 +145,17 @@ export {
   type CoreV2SubmissionReceipt,
 } from "./receipt-v2.js";
 export {
+  PUBLISHED_AUCTION_EVIDENCE_VERSION,
+  parsePublishedAuctionEvidence,
+  serializePublishedAuctionEvidence,
+  verifyPublishedAuctionEvidence,
+  type AuctionEvidencePhase,
+  type AuctionEvidenceTransaction,
+  type PublishedAuctionEvidence,
+  type PublishedAuctionEvidenceIssue,
+  type PublishedAuctionEvidenceVerification,
+} from "./published-auction.js";
+export {
   redactReceipt,
   type RedactOptions,
 } from "./redact.js";

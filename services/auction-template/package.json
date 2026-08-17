@@ -6,7 +6,8 @@
   "scripts": {
     "fixture": "FIXTURE=1 node --import tsx sealed-auction.ts",
     "testnet": "node --import tsx sealed-auction.ts",
-    "test": "node --import tsx --test sealed-auction.smoke.test.ts",
+    "testnet:v2": "node --import tsx core-v2-auction.ts",
+    "test": "node --import tsx --test *.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

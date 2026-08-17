@@ -15,6 +15,7 @@ import { TrustlessWorkPilotPage } from "./pages/TrustlessWorkPilotPage";
 import { OfferHubPilotPage } from "./pages/OfferHubPilotPage";
 import { ActaPilotPage } from "./pages/ActaPilotPage";
 import { OpenX402PilotPage } from "./pages/OpenX402PilotPage";
+import { PublishedReceiptPage } from "./pages/PublishedReceiptPage";
 import { SiteFooter } from "./components/SiteFooter";
 import { ToastProvider } from "./ui/Toast";
 
@@ -57,6 +58,11 @@ export default function App() {
         <ActaPilotPage goHome={() => navigate("landing")} />
       ) : route.page === "openX402Pilot" ? (
         <OpenX402PilotPage goHome={() => navigate("landing")} />
+      ) : route.page === "publishedReceipt" ? (
+        <PublishedReceiptPage
+          slug={route.receiptSlug ?? ""}
+          goHome={() => navigate("landing")}
+        />
       ) : route.page === "docs" ? (
         <DocsPage goHome={() => navigate("landing")} />
       ) : (

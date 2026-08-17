@@ -1,0 +1,25 @@
+{
+  "schema": "sub-rosa/instawards-manifest/v1",
+  "generatedAt": "2026-08-17T16:25:04.824Z",
+  "contractId": "CCOVGOQQZJKZ2R55GRWBLTJTGBAMSHXZVN3ICPG3WRVMLMM6RHISC5OV",
+  "rounds": [
+    {
+      "slug": "instawards-auction-1",
+      "roundId": "21",
+      "title": "Instawards sealed auction 1",
+      "path": "/instawards/receipts/instawards-auction-1.json"
+    },
+    {
+      "slug": "instawards-auction-2",
+      "roundId": "22",
+      "title": "Instawards sealed auction 2",
+      "path": "/instawards/receipts/instawards-auction-2.json"
+    },
+    {
+      "slug": "instawards-auction-3",
+      "roundId": "23",
+      "title": "Instawards sealed auction 3",
+      "path": "/instawards/receipts/instawards-auction-3.json"
+    }
+  ]
+}

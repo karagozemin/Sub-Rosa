@@ -9,5 +9,10 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["sealed-auction.ts", "sealed-auction.smoke.test.ts"]
+  "include": [
+    "sealed-auction.ts",
+    "sealed-auction.smoke.test.ts",
+    "core-v2-auction.ts",
+    "published-evidence.test.ts"
+  ]
 }

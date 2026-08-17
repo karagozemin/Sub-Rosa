@@ -13,6 +13,7 @@ receipt for an off-chain decision.
   <a href="https://sub-rosa-web.vercel.app/">Live app</a> |
   <a href="https://sub-rosa-web.vercel.app/#/pilot/the-signal">Testnet pilot / deal flow</a> |
   <a href="https://sub-rosa-web.vercel.app/#/docs">Hosted docs</a> |
+  <a href="./docs/INSTAWARDS_COMPLETION.md">Instawards evidence</a> |
   <a href="./packages/sdk/README.md">SDK docs</a> |
   <a href="https://stellar.expert/explorer/testnet/contract/CCOVGOQQZJKZ2R55GRWBLTJTGBAMSHXZVN3ICPG3WRVMLMM6RHISC5OV">Testnet contract</a> |
   <a href="https://stellar.expert/explorer/public/contract/CDQOFNCJE5Z4ZZL76DU5652FOUKJVEIZWHFGCZVWH63UYBGPSZIPC325">Mainnet contract</a>
@@ -27,6 +28,21 @@ Sub Rosa is a protocol and integration stack, not only a hosted application:
 - a hosted pilot UI with public lifecycle receipts.
 
 The project is licensed under [MIT](./LICENSE).
+
+## Instawards completion evidence
+
+The sealed-auction integration-kit SOW is complete on Stellar testnet. Three
+native-XLM Core v2 Auction rounds, each with three bidders, completed the full
+commit, Drand reveal, clear, and atomic settle/refund lifecycle:
+
+- [Round 21 receipt](https://sub-rosa-web.vercel.app/#/receipt/instawards-auction-1)
+- [Round 22 receipt](https://sub-rosa-web.vercel.app/#/receipt/instawards-auction-2)
+- [Round 23 receipt](https://sub-rosa-web.vercel.app/#/receipt/instawards-auction-3)
+
+The [completion evidence pack](./docs/INSTAWARDS_COMPLETION.md) links every
+settlement transaction and the reusable template. This is completed Instawards
+work and a **pre-SCF baseline**; none of these rounds count toward an SCF
+post-award usage target or future SCF-funded deliverable.
 
 ## Status at a glance
 

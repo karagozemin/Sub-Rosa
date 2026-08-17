@@ -13,11 +13,13 @@ export type Page =
   | "offerHubPilot"
   | "actaPilot"
   | "openX402Pilot"
+  | "publishedReceipt"
   | "docs";
 
 export interface RouteState {
   page: Page;
   useCase: UseCaseId;
+  receiptSlug?: string;
 }
 
 export function routeFromHash(source = window.location.hash): RouteState {
@@ -27,6 +29,9 @@ export function routeFromHash(source = window.location.hash): RouteState {
   }
 
   const parts = hash.split("/").filter(Boolean);
+  if (parts[0] === "receipt" && /^[a-z0-9-]+$/.test(parts[1] ?? "")) {
+    return { page: "publishedReceipt", useCase: "auction", receiptSlug: parts[1] };
+  }
   if (parts[0] === "architecture") {
     return { page: "architecture", useCase: "auction" };
   }
@@ -84,8 +89,16 @@ export function hashFor(page: Page, useCase: UseCaseId = "auction"): string {
   if (page === "offerHubPilot") return "#/pilot/offer-hub";
   if (page === "actaPilot") return "#/pilot/acta";
   if (page === "openX402Pilot") return "#/pilot/openx402";
+  if (page === "publishedReceipt") return "#/receipt";
   if (page === "docs") return "#/docs";
   return `#/demo/${useCase}`;
+}
+
+export function publishedReceiptSlugFromHash(source = window.location.hash): string {
+  const parts = source.replace(/^#\/?/, "").split("/").filter(Boolean);
+  return parts[0] === "receipt" && /^[a-z0-9-]+$/.test(parts[1] ?? "")
+    ? parts[1]!
+    : "";
 }
 
 export function trustlessWorkPilotRoundIdFromHash(source = window.location.hash): string {
