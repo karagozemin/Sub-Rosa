@@ -114,7 +114,7 @@ independently reviewed.
 ## Sources
 
 - SDK and protocol source: https://github.com/karagozemin/Sub-Rosa/tree/main
-- Integration docs: https://sub-rosa-web.vercel.app/#/docs
+- Integration docs: https://www.sub-rosa.online/#/docs
 - Published package: https://www.npmjs.com/package/@sub-rosa/sdk
 - Stellar smart contract docs: https://developers.stellar.org/docs/build/smart-contracts
 - Drand quicknet: https://docs.drand.love/blog/2023/10/16/quicknet-is-live

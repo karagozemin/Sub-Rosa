@@ -10,9 +10,9 @@ verifiable time, and either settle assets atomically or produce a canonical
 receipt for an off-chain decision.
 
 <p align="center">
-  <a href="https://sub-rosa-web.vercel.app/">Live app</a> |
-  <a href="https://sub-rosa-web.vercel.app/#/pilot/the-signal">Testnet pilot / deal flow</a> |
-  <a href="https://sub-rosa-web.vercel.app/#/docs">Hosted docs</a> |
+  <a href="https://www.sub-rosa.online/">Live app</a> |
+  <a href="https://www.sub-rosa.online/#/pilot/the-signal">Testnet pilot / deal flow</a> |
+  <a href="https://www.sub-rosa.online/#/docs">Hosted docs</a> |
   <a href="./docs/INSTAWARDS_COMPLETION.md">Instawards evidence</a> |
   <a href="./packages/sdk/README.md">SDK docs</a> |
   <a href="https://stellar.expert/explorer/testnet/contract/CCOVGOQQZJKZ2R55GRWBLTJTGBAMSHXZVN3ICPG3WRVMLMM6RHISC5OV">Testnet contract</a> |
@@ -35,9 +35,9 @@ The sealed-auction integration-kit SOW is complete on Stellar testnet. Three
 native-XLM Core v2 Auction rounds, each with three bidders, completed the full
 commit, Drand reveal, clear, and atomic settle/refund lifecycle:
 
-- [Round 21 receipt](https://sub-rosa-web.vercel.app/#/receipt/instawards-auction-1)
-- [Round 22 receipt](https://sub-rosa-web.vercel.app/#/receipt/instawards-auction-2)
-- [Round 23 receipt](https://sub-rosa-web.vercel.app/#/receipt/instawards-auction-3)
+- [Round 21 receipt](https://www.sub-rosa.online/#/receipt/instawards-auction-1)
+- [Round 22 receipt](https://www.sub-rosa.online/#/receipt/instawards-auction-2)
+- [Round 23 receipt](https://www.sub-rosa.online/#/receipt/instawards-auction-3)
 
 The [completion evidence pack](./docs/INSTAWARDS_COMPLETION.md) links every
 settlement transaction and the reusable template. This is completed Instawards
@@ -115,7 +115,7 @@ the contract exposes a grace-period void path that returns held assets.
 
 ## Hosted deal-flow pilot
 
-[Open the standalone pilot](https://sub-rosa-web.vercel.app/#/pilot/the-signal)
+[Open the standalone pilot](https://www.sub-rosa.online/#/pilot/the-signal)
 
 The hosted pilot is a The Signal-style validation surface built entirely on the
 Sub Rosa side. It demonstrates the deal flow without requiring a The Signal
