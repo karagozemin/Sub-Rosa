@@ -44,6 +44,8 @@ settlement transaction and the reusable template. This is completed Instawards
 work and a **pre-SCF baseline**; none of these rounds count toward an SCF
 post-award usage target or future SCF-funded deliverable.
 
+[Download the completed SOW PDF](./docs/INSTAWARDS_SOW_COMPLETED.pdf)
+
 ## Status at a glance
 
 | Surface | Current status |

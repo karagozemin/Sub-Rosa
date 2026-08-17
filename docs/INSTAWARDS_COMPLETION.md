@@ -4,6 +4,8 @@
 **Scope:** Sealed-auction integration kit (public receipt, template, and three live rounds)  
 **SCF boundary:** This is completed Instawards work and a **pre-SCF baseline**. Rounds 21-23 do not count toward any SCF post-award round target or future SCF-funded deliverable.
 
+[Download the completed SOW PDF](./INSTAWARDS_SOW_COMPLETED.pdf) | [Read this evidence pack online](https://github.com/karagozemin/Sub-Rosa/blob/main/docs/INSTAWARDS_COMPLETION.md)
+
 ## Reviewer links
 
 All three rounds use Core v2 `Auction`, native testnet XLM escrow, three distinct

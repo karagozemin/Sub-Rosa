@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Sub Rosa - Instawards Completion Addendum</title>
+  <style>
+    @page { size: Letter; margin: 0.52in; }
+    :root {
+      color-scheme: light;
+      --ink: #17212b;
+      --muted: #52606d;
+      --line: #cbd5df;
+      --blue: #155e8a;
+      --blue-soft: #eaf4fa;
+      --green: #176b4b;
+      --green-soft: #eaf7f0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 9.5pt;
+      line-height: 1.38;
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 5px; font-size: 23pt; letter-spacing: -0.3px; }
+    h2 { margin: 19px 0 7px; padding-bottom: 4px; border-bottom: 2px solid var(--blue); color: var(--blue); font-size: 14pt; }
+    h3 { margin: 12px 0 4px; color: var(--blue); font-size: 10.5pt; }
+    p { margin-bottom: 7px; }
+    a { color: #075d91; text-decoration: underline; overflow-wrap: anywhere; }
+    code { font-family: "Courier New", monospace; font-size: 8.3pt; }
+    .masthead { display: flex; justify-content: space-between; gap: 20px; border-bottom: 3px solid var(--blue); padding-bottom: 9px; }
+    .kicker { color: var(--blue); font-weight: bold; font-size: 9pt; letter-spacing: 1.3px; text-transform: uppercase; }
+    .meta { min-width: 190px; text-align: right; color: var(--muted); font-size: 8.6pt; }
+    .meta strong { display: block; color: var(--ink); font-size: 10pt; }
+    .status { margin: 13px 0; padding: 11px 13px; border: 1px solid #80b99f; border-left: 6px solid var(--green); border-radius: 4px; background: var(--green-soft); }
+    .status strong { display: block; margin-bottom: 2px; color: var(--green); font-size: 14pt; }
+    .facts { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px 13px; margin: 11px 0 13px; }
+    .fact { padding: 6px 8px; border: 1px solid var(--line); border-radius: 3px; }
+    .fact label { display: block; color: var(--muted); font-size: 7.5pt; text-transform: uppercase; }
+    .fact strong { display: block; margin-top: 2px; font-size: 9.2pt; }
+    table { width: 100%; border-collapse: collapse; margin: 7px 0 10px; font-size: 8.3pt; }
+    th { padding: 6px 6px; color: white; background: var(--blue); text-align: left; font-size: 8pt; }
+    td { padding: 6px; border: 1px solid var(--line); vertical-align: top; }
+    tr:nth-child(even) td { background: #f7fafc; }
+    .pass { color: var(--green); font-weight: bold; white-space: nowrap; }
+    .small { color: var(--muted); font-size: 8.2pt; }
+    .hash { display: block; margin-top: 2px; font-family: "Courier New", monospace; font-size: 7.4pt; overflow-wrap: anywhere; }
+    .callout { padding: 8px 10px; border: 1px solid #a9cce1; background: var(--blue-soft); }
+    ul { margin: 4px 0 8px 17px; padding: 0; }
+    li { margin: 2px 0; }
+    .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 17px; }
+    .signature { display: grid; grid-template-columns: 1fr 1fr; gap: 27px; margin-top: 24px; }
+    .signature div { padding-top: 21px; border-top: 1px solid #596774; }
+    .footer { margin-top: 18px; padding-top: 6px; border-top: 1px solid var(--line); color: var(--muted); font-size: 7.6pt; }
+    .page-break { break-before: page; }
+    .page-break { font-size: 8.7pt; line-height: 1.25; }
+    .page-break h2 { margin-top: 11px; margin-bottom: 5px; }
+    .page-break h3 { margin-top: 8px; margin-bottom: 3px; }
+    .page-break p { margin-bottom: 4px; }
+    .page-break table { margin-top: 5px; margin-bottom: 7px; }
+    .page-break th, .page-break td { padding: 4px 5px; }
+    .page-break .callout { padding: 6px 8px; }
+    .page-break .signature { margin-top: 9px; }
+    .nowrap { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <section>
+    <div class="masthead">
+      <div>
+        <div class="kicker">Instawards Statement of Work</div>
+        <h1>Completion Addendum</h1>
+        <p class="small">Sub Rosa sealed-auction integration kit</p>
+      </div>
+      <div class="meta">
+        Completion date
+        <strong>17 August 2026</strong>
+        Stellar testnet only
+      </div>
+    </div>
+
+    <div class="status">
+      <strong>PASS - SOW COMPLETED</strong>
+      The binary success metric is met: three independently verifiable end-to-end
+      testnet Auction rounds, each with a public receipt and on-chain settlement/refund evidence.
+    </div>
+
+    <div class="facts">
+      <div class="fact"><label>Project</label><strong>Sub Rosa</strong></div>
+      <div class="fact"><label>Builder</label><strong>Emin Karagoz</strong></div>
+      <div class="fact"><label>Network</label><strong>Stellar testnet</strong></div>
+      <div class="fact"><label>Public app</label><strong>sub-rosa.online</strong></div>
+      <div class="fact"><label>Core v2 contract</label><strong><code>CCOVGOQQZ...C5OV</code></strong></div>
+      <div class="fact"><label>Payment / escrow</label><strong>Native testnet XLM</strong></div>
+    </div>
+
+    <h2>Completion Checklist</h2>
+    <table>
+      <thead><tr><th>Deliverable</th><th>Completed output</th><th>Evidence</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>D1</strong><br>Public auction receipt</td>
+          <td>SDK evidence module and public receipt page. Each page shows round ID, contract, Drand round, bidder count, escrow, winning bid, lifecycle hashes, and live-ledger reconciliation.</td>
+          <td><a href="https://sub-rosa.online/#/receipt/instawards-auction-1">Public receipt #21</a><br><a href="https://github.com/karagozemin/Sub-Rosa/blob/main/packages/sdk/src/published-auction.ts">SDK module</a></td>
+          <td class="pass">PASS</td>
+        </tr>
+        <tr>
+          <td><strong>D2</strong><br>Template + quickstart</td>
+          <td>Copy-paste Core v2 runner using the public SDK: create, sealed commit, Drand reveal, clear, settle/refund, and verified evidence export.</td>
+          <td><a href="https://github.com/karagozemin/Sub-Rosa/tree/main/services/auction-template">Template and quickstart</a><br><a href="https://github.com/karagozemin/Sub-Rosa/blob/main/docs/INSTAWARDS_COMPLETION.md">Evidence pack</a></td>
+          <td class="pass">PASS</td>
+        </tr>
+        <tr>
+          <td><strong>D3</strong><br>Live demo + 3 receipts</td>
+          <td>Three real Auction rounds with three bidders each. Every round completed commit -> reveal -> clear -> atomic settle/refund.</td>
+          <td><a href="https://sub-rosa.online/#/receipt/instawards-auction-1">#21</a> &nbsp; <a href="https://sub-rosa.online/#/receipt/instawards-auction-2">#22</a> &nbsp; <a href="https://sub-rosa.online/#/receipt/instawards-auction-3">#23</a></td>
+          <td class="pass">PASS</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Live Round Evidence</h2>
+    <table>
+      <thead><tr><th>Round</th><th>Public receipt / raw JSON</th><th>Create transaction</th><th>Atomic settlement + refunds</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>#21</strong><br>3 bidders<br>18 XLM winning bid</td>
+          <td><a href="https://sub-rosa.online/#/receipt/instawards-auction-1">Receipt page</a><br><a href="https://sub-rosa.online/instawards/receipts/instawards-auction-1.json">Raw evidence JSON</a></td>
+          <td><a href="https://stellar.expert/explorer/testnet/tx/33c8fdc287adf79757e5d1b53c18cb1710373121d0ceaed36bb3b44138154aeb">Open explorer</a><span class="hash">33c8fdc2...38154aeb</span></td>
+          <td><a href="https://stellar.expert/explorer/testnet/tx/60c0db44baad1f367551b48157f5652242553392eab476df8b5c463110d9feee">Open explorer</a><span class="hash">60c0db44...10d9feee</span></td>
+        </tr>
+        <tr>
+          <td><strong>#22</strong><br>3 bidders<br>21 XLM winning bid</td>
+          <td><a href="https://sub-rosa.online/#/receipt/instawards-auction-2">Receipt page</a><br><a href="https://sub-rosa.online/instawards/receipts/instawards-auction-2.json">Raw evidence JSON</a></td>
+          <td><a href="https://stellar.expert/explorer/testnet/tx/47c6f5b49dc2f3b69b46cd7fcc000da4d2f801c4fb79a58ac4ea2e6b3e8490b4">Open explorer</a><span class="hash">47c6f5b4...3e8490b4</span></td>
+          <td><a href="https://stellar.expert/explorer/testnet/tx/bbc799913584968b19d572849fd747bd0b2168cec948b832611c9696337d972a">Open explorer</a><span class="hash">bbc79991...37d972a</span></td>
+        </tr>
+        <tr>
+          <td><strong>#23</strong><br>3 bidders<br>22 XLM winning bid</td>
+          <td><a href="https://sub-rosa.online/#/receipt/instawards-auction-3">Receipt page</a><br><a href="https://sub-rosa.online/instawards/receipts/instawards-auction-3.json">Raw evidence JSON</a></td>
+          <td><a href="https://stellar.expert/explorer/testnet/tx/2eb778dc7c6d471bc06fc1034b55494f5026b2949f2da5835144cda81eeb5301">Open explorer</a><span class="hash">2eb778dc...1eeb5301</span></td>
+          <td><a href="https://stellar.expert/explorer/testnet/tx/161f8c24d076d75ef82b3d5372742a680431f4770e02359186c069e872044c32">Open explorer</a><span class="hash">161f8c24...72044c32</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="callout"><strong>Atomic settlement note:</strong> Core v2 uses one <code>settle_v2</code> transaction per round. The same transaction pays the seller, refunds the winner's unused escrow and every losing bidder, and transfers the lot. Therefore the settlement and refund evidence intentionally point to the same transaction hash.</p>
+
+    <div class="footer">Sub Rosa | Instawards completion addendum | Original SOW remains unchanged; this addendum records delivery evidence.</div>
+  </section>
+
+  <section class="page-break">
+    <div class="masthead">
+      <div><div class="kicker">Verification record</div><h1>Implementation and Test Evidence</h1></div>
+      <div class="meta">Evidence pack<br><strong>Public repository</strong>karagozemin/Sub-Rosa</div>
+    </div>
+
+    <h2>What was delivered</h2>
+    <div class="columns">
+      <div>
+        <h3>Public receipt surface</h3>
+        <p>The <code>PublishedAuctionEvidence</code> SDK model pairs a canonical Core v2 receipt with transaction evidence. Offline verification checks the receipt, Auction/Settled state, bidder minimum, lifecycle hashes, and atomic settlement/refund relationship.</p>
+        <p>The receipt page reads the current round from Stellar RPC and compares status, mode, bidder count, winner, and winning amount with the published evidence.</p>
+      </div>
+      <div>
+        <h3>Reusable integration template</h3>
+        <p>The template uses native testnet XLM escrow and the public <code>@sub-rosa/sdk</code> surface. It creates the round, submits three time-locked bids, fetches the Drand beacon, opens and reveals, clears, settles, and writes verified public JSON.</p>
+        <p><a href="https://github.com/karagozemin/Sub-Rosa/blob/main/services/auction-template/README.md">Open the copy-paste quickstart</a></p>
+      </div>
+    </div>
+
+    <h2>Verification results</h2>
+    <table>
+      <thead><tr><th>Check</th><th>Result</th><th>Scope</th></tr></thead>
+      <tbody>
+        <tr><td>Core v2 contract suite</td><td class="pass">100 passed</td><td>Lifecycle, Drand, policy, settlement, refunds, conservation, error paths</td></tr>
+        <tr><td>SDK suite</td><td class="pass">129 passed</td><td>Receipt verification, public API, encoding, network and evidence module</td></tr>
+        <tr><td>Web suite</td><td class="pass">128 passed</td><td>Routes, pilots, configuration, receipt page integration and UI health</td></tr>
+        <tr><td>Auction template suite</td><td class="pass">6 passed</td><td>Published evidence health plus offline template smoke tests</td></tr>
+        <tr><td>Production build</td><td class="pass">Passed</td><td>Vite production build and live Vercel deployment</td></tr>
+        <tr><td>Live ledger reconciliation</td><td class="pass">3 matched</td><td>Rounds #21, #22, and #23 read as Auction / Settled on Stellar testnet</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Lifecycle summary</h2>
+    <ol>
+      <li>Seller escrows the lot and fixes identical 25 XLM bidder escrow.</li>
+      <li>Three allowlisted testnet accounts submit encrypted commitment-bound bids.</li>
+      <li>Amounts remain hidden until Drand round <strong>31393417</strong>.</li>
+      <li>After reveal, the contract records valid bid amounts and clears the highest valid bid.</li>
+      <li>One atomic settlement call pays, refunds all escrow balances, and transfers the lot.</li>
+      <li>The SDK exports a canonical receipt; the public page verifies it offline and reconciles live state.</li>
+    </ol>
+
+    <h2>Known limits and scope boundary</h2>
+    <ul>
+      <li>Testnet only; no real-value or mainnet claim is made.</li>
+      <li>The auction lot is a test asset; bidder escrow is native testnet XLM.</li>
+      <li>The keeper/runner is demo-grade, not highly available production infrastructure.</li>
+      <li>No third-party security audit, production database, multi-tenant dashboard, anti-sybil layer, custom wallet, governance, or fee market is claimed.</li>
+    </ul>
+    <p class="callout"><strong>SCF separation:</strong> Rounds #21-23 and this integration kit were completed as Instawards baseline work before the SCF award. They are not represented as SCF-funded rounds and do not count toward any post-award SCF usage target.</p>
+
+    <div class="signature">
+      <div><strong>Builder completion declaration</strong><br>Emin Karagoz<br>Date: 17 August 2026</div>
+      <div><strong>Ambassador Chapter Lead review</strong><br>Signature: __________________________<br>Date: __________________</div>
+    </div>
+    <div class="footer">Public evidence pack: <a href="https://github.com/karagozemin/Sub-Rosa/blob/main/docs/INSTAWARDS_COMPLETION.md">github.com/karagozemin/Sub-Rosa/docs/INSTAWARDS_COMPLETION.md</a></div>
+  </section>
+</body>
+</html>
