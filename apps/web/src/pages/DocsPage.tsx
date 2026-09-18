@@ -54,7 +54,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "browser-wallets", label: "Browser wallets", keywords: "freighter signer frontend bindings" },
       { id: "timing", label: "Drand & deadlines", keywords: "round reveal commit timestamp" },
       { id: "lifecycle", label: "Lifecycle & keeper", keywords: "open reveal clear settle void automation" },
-      { id: "owner-reveal", label: "Owner-triggered reveal", keywords: "protocol 3 v3 policy fallback operator open createRoundV3" },
+      { id: "owner-reveal", label: "Owner-triggered reveal", keywords: "protocol 3 v3 policy fallback operator manual reveal open createRoundV3 supportsRevealPolicy getRevealStateV3 require_auth" },
     ],
   },
   {
@@ -226,14 +226,14 @@ if (finalRound.status.tag === "Cleared" && finalRound.mode.tag === "Auction") {
   await keeperClient.settleV2(roundId);
 }`;
 
+// Step 1 — detect the policy capability, then create the round.
 const ownerRevealCode = `import {
-  fetchRoundSignature,
-  quicknet,
   resolveRevealPolicyV3Deployment,
   SubRosaClient,
 } from "@sub-rosa/sdk";
 
-// Explicit opt-in: defaults still resolve to the reviewed Core v2 contract.
+// Explicit opt-in: the SDK/UI defaults still resolve to the reviewed
+// Core v2 contract. Protocol 3 is reached only by its own contract id.
 const v3 = resolveRevealPolicyV3Deployment("testnet");
 const operator = new SubRosaClient({
   rpcUrl: v3.rpcUrl,
@@ -242,17 +242,60 @@ const operator = new SubRosaClient({
   secretKey: process.env.OPERATOR_SECRET,
 });
 
-// Requires supportsRevealPolicy() === true on the target contract.
+// A Core v2 contract has no reveal policy. Probe capability 3 first so you
+// fail fast instead of hitting a missing contract function at runtime.
+if (!(await operator.supportsRevealPolicy())) {
+  throw new Error("Target contract is Core v2 (Timed reveal only).");
+}
+
+// fallbackAt must be AFTER Drand R, and revealDeadline must be at least
+// fallbackAt + 300s. Otherwise create_round_v3 reverts with error 46
+// (InvalidRevealPolicy); the SDK also rejects it client-side first.
 const roundId = await operator.createRoundV3({
-  ...auctionParams, // same item/schema/mode/deadline fields as Core v2
+  ...auctionParams, // same item / schema / mode / deadline fields as Core v2
   revealPolicy: { type: "owner-triggered", fallbackAt: privacyAt + 300 },
   revealDeadline: privacyAt + 900,
-});
+});`;
 
-// After Drand R, only the operator can open until fallbackAt.
+// Step 2 — manual reveal by the operator, or the permissionless fallback,
+// then the identical Core v2 reveal -> clear -> settle flow.
+const ownerRevealLifecycleCode = `import { fetchRoundSignature, quicknet } from "@sub-rosa/sdk";
+
+// The policy is immutable and readable at any time. Rounds created before
+// protocol 3 have none, so getRevealStateV3 throws error 47
+// (RevealPolicyMissing) for a plain Core v2 round.
+const state = await operator.getRevealStateV3(roundId);
+// state.policy -> { tag: "OwnerTriggered", values: [fallbackAt] }
+// state.opened_at -> undefined until reveal is opened, then the open time.
+
+// Once Drand publishes round R, fetch the BLS signature once.
 const signature = await fetchRoundSignature(quicknet(), Number(revealRound));
+
+// MANUAL REVEAL — before fallbackAt only the immutable operator may open.
+// A non-operator calling this before fallbackAt fails require_auth (a host
+// auth error, not a numbered contract code). openRevealV2 still verifies the
+// Drand signature, so opening early is impossible for everyone.
 await operator.openRevealV2(roundId, signature);
-// If the operator never opens, anyone may open at/after fallbackAt.`;
+
+// PERMISSIONLESS FALLBACK — if the operator stays silent, ANY funded account
+// may open at or after fallbackAt. A silent operator can never freeze escrow
+// or the lot; the round always makes progress.
+// await anyone.openRevealV2(roundId, signature);
+
+// From here the flow is byte-for-byte the Core v2 flow. Reveal each cohort
+// envelope separately so one malformed ciphertext cannot fail the group.
+for (const bidder of cohort) {
+  await bidder.revealV2({ roundId, bidder: bidder.address, envelope });
+}
+
+const winner = await operator.clearV2(roundId); // deterministic winner or undefined
+if (winner) {
+  await operator.settleV2(roundId); // Auction mode only; ReceiptOnly stops at Cleared
+}
+
+// RECOVERY — if reveal stalls past revealDeadline + 3600s, anyone may void:
+// void_v2 refunds every escrow and returns the lot. No funds can be stranded.
+// await anyone.voidV2(roundId);`;
 
 const receiptCode = `import {
   serializeReceiptV2,
@@ -558,12 +601,15 @@ export function DocsPage({ goHome }: { goHome: () => void }) {
           </section>
 
           <section className="docs-section" id="owner-reveal">
-            <SectionHeading eyebrow="Protocol 3" title="Owner-triggered reveal">An optional versioned policy that lets a round's immutable operator choose when reveal opens after Drand R, with a mandatory permissionless fallback so a round can never be stuck.</SectionHeading>
+            <SectionHeading eyebrow="Protocol 3" title="Owner-triggered reveal">An optional versioned reveal policy — also called manual reveal — that lets a round's immutable operator choose when reveal opens after Drand R, with a mandatory permissionless fallback so a round can never be stuck. Everything below is opt-in; the defaults are unchanged.</SectionHeading>
             <div className="docs-mode-grid">
-              <div><span>Timed (default)</span><h3>Anyone opens after R</h3><p>The classic Core v2 behavior. Once Drand publishes the round signature, any funded account can open reveal.</p></div>
-              <div><span>Owner-triggered</span><h3>Operator opens, then fallback</h3><p>After R, only the operator can open until <code>fallbackAt</code>. At or after <code>fallbackAt</code> anyone can open, so a silent operator cannot freeze escrow or the lot.</p></div>
+              <div><span>Timed (default)</span><h3>Anyone opens after R</h3><p>The classic Core v2 behavior. Once Drand publishes the round signature, any funded account can call <code>openRevealV2</code>. There is no operator window.</p></div>
+              <div><span>Owner-triggered (manual)</span><h3>Operator opens, then fallback</h3><p>After R and before <code>fallbackAt</code>, only the immutable operator can open (manual reveal). At or after <code>fallbackAt</code> anyone can open, so a silent operator cannot freeze escrow or the lot.</p></div>
             </div>
+            <p className="docs-step-label">Step 1 — detect capability 3 and create the round</p>
             <CodeBlock code={ownerRevealCode} />
+            <p className="docs-step-label">Step 2 — open (manual or fallback), then reveal → clear → settle</p>
+            <CodeBlock code={ownerRevealLifecycleCode} />
             <div className="docs-mode-grid">
               <div>
                 <span>Stellar Testnet</span>
@@ -581,11 +627,19 @@ export function DocsPage({ goHome }: { goHome: () => void }) {
                 <ul>
                   <li><code>fallbackAt</code> must be after Drand R</li>
                   <li><code>revealDeadline</code> ≥ <code>fallbackAt</code> + 300s</li>
+                  <li><code>void_v2</code> is allowed after <code>revealDeadline</code> + 3600s</li>
                   <li>Applies to both Auction and ReceiptOnly</li>
                   <li>The operator is the immutable controller</li>
                 </ul>
               </div>
             </div>
+            <div className="docs-kv-table">
+              <div><span>Who can open before <code>fallbackAt</code></span><code>operator only (require_auth)</code></div>
+              <div><span>Who can open at/after <code>fallbackAt</code></span><code>anyone (permissionless)</code></div>
+              <div><span>createRoundV3 with a bad window</span><code>error 46 · InvalidRevealPolicy</code></div>
+              <div><span>getRevealStateV3 / open on a Core v2 round</span><code>error 47 · RevealPolicyMissing</code></div>
+            </div>
+            <Callout title="Unauthorized early opening fails require_auth, not a numbered error" tone="warning">Before <code>fallbackAt</code> the contract calls <code>operator.require_auth()</code>, so a non-operator opening early fails as a host authorization error rather than a numbered contract code. The two numbered protocol-3 codes are <code>46 InvalidRevealPolicy</code> (create with a fallback that is not after Drand R or leaves under 300s before the reveal deadline) and <code>47 RevealPolicyMissing</code> (reading or opening protocol-3 state on a round that has none).</Callout>
             <Callout title="Explicit opt-in; defaults are unchanged" tone="warning">This is a separate deployment. The SDK/UI defaults still resolve to the reviewed Core v2 contract; reach protocol 3 only by passing this contract id (for example via <code>resolveRevealPolicyV3Deployment</code>). Mainnet is pending an independent funds-handling review.</Callout>
             <Callout title="Opening does not extend confidentiality">When Drand publishes the signature, anyone holding a ciphertext can decrypt off-chain, including the operator. The fallback bounds how long the operator can delay on-chain opening; it does not add privacy. Use Timed when operator discretion is undesirable.</Callout>
           </section>
