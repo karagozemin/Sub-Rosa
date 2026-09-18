@@ -1,6 +1,6 @@
 {
   "name": "@sub-rosa/sdk",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": false,
   "type": "module",
   "description": "TypeScript SDK for integrating Sub Rosa sealed auctions and receipt-only proposal rounds on Stellar.",

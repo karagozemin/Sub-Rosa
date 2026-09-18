@@ -2,6 +2,21 @@
 
 All notable changes to `@sub-rosa/sdk` are documented here.
 
+## 0.3.1 — 2026-09-18
+
+### Documentation
+
+- README: added an "Owner-triggered reveal (protocol 3, opt-in)" section with the
+  full manual-reveal lifecycle — `resolveRevealPolicyV3Deployment`,
+  `supportsRevealPolicy`, `createRoundV3`, `getRevealStateV3`, operator vs
+  permissionless fallback opening, and `revealV2` → `clearV2` → `settleV2` →
+  `voidV2`. Documents that the operator-only window before `fallbackAt` is
+  enforced by `require_auth` (not a numbered code) and the two numbered codes
+  `46 InvalidRevealPolicy` / `47 RevealPolicyMissing`.
+
+No runtime or API changes; the published 0.3.0 code is unchanged. This release
+exists so the improved README reaches npm (0.3.0 is immutable).
+
 ## 0.3.0 — 2026-09-18
 
 ### Added
