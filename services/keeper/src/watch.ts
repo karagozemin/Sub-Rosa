@@ -18,6 +18,7 @@ import { quicknet } from "@sub-rosa/tlock";
 import { createSettlementGuard } from "./settlement-guard.js";
 import { KeeperStore } from "./store.js";
 import { runWatchLoop } from "./watch-loop.js";
+import { parseKeeperProtocolVersion } from "./protocol.js";
 import { parseKeeperNetworkConfig } from "./network-config.js";
 
 function reqEnv(name: string): string {
@@ -27,6 +28,7 @@ function reqEnv(name: string): string {
 }
 
 async function main() {
+  const protocolVersion = parseKeeperProtocolVersion();
   const pollMs = Number(process.env.WATCH_POLL_MS ?? "15000");
   const { contractId, rpcUrl, networkPassphrase } =
     parseKeeperNetworkConfig();
@@ -60,6 +62,7 @@ async function main() {
 
   await runWatchLoop({
     sdk,
+    protocolVersion,
     drand,
     log,
     pollMs,

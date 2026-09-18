@@ -18,7 +18,7 @@ import {
   buildKeeperDryRunSummary,
   parseKeeperRunConfig,
 } from "./dry-run.js";
-import { keepRound } from "./keeper.js";
+import { keepRound, keepRoundV2 } from "./keeper.js";
 
 async function main() {
   const config = parseKeeperRunConfig();
@@ -29,7 +29,7 @@ async function main() {
       networkPassphrase: config.networkPassphrase,
       contractId: config.contractId,
     });
-    const summary = await buildKeeperDryRunSummary(reader, config.roundId);
+    const summary = await buildKeeperDryRunSummary(reader, config.roundId, undefined, config.protocolVersion);
     console.log("keeper dry-run summary:");
     console.log(JSON.stringify(summary, bigintReplacer, 2));
     return;
@@ -42,7 +42,7 @@ async function main() {
     secretKey: config.keeperSecret!,
   });
 
-  const result = await keepRound(
+  const result = await (config.protocolVersion === 2 ? keepRoundV2 : keepRound)(
     {
       sdk,
       drand: quicknet(),

@@ -12,7 +12,7 @@ test("parseRoundIdSpec handles singles and ranges", () => {
   assert.deepEqual(parseRoundIdSpec("2, 4-6"), [2n, 4n, 5n, 6n]);
 });
 
-test("discoverRoundIds stops at RoundNotFound", async () => {
+test("discoverRoundIds returns existing rounds within its bounded scan", async () => {
   const reader = {
     getRound: async (id: bigint) => {
       if (id <= 3n) return { status: { tag: "Open" } };

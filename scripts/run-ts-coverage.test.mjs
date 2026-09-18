@@ -10,7 +10,28 @@ import {
   countSourceLines,
   listSourceFiles,
   parseLcov,
+  testFilesForWorkspace,
 } from "./run-ts-coverage.mjs";
+
+describe("standard test discovery", () => {
+  it("fails coverage when an existing test is omitted from the standard command", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "cov-tests-"));
+    try {
+      mkdirSync(join(tmp, "pkg", "src", "nested"), { recursive: true });
+      writeFileSync(join(tmp, "pkg", "src", "listed.test.ts"), "");
+      writeFileSync(join(tmp, "pkg", "src", "nested", "orphan.test.ts"), "");
+      const manifest = (files) => JSON.stringify({ scripts: { test: `node --import tsx --test ${files}` } });
+      writeFileSync(join(tmp, "pkg", "package.json"), manifest("src/listed.test.ts"));
+      assert.throws(() => testFilesForWorkspace("pkg", tmp), /Tests missing.*nested\/orphan.test.ts/);
+      writeFileSync(join(tmp, "pkg", "package.json"), manifest("src/listed.test.ts src/nested/orphan.test.ts"));
+      assert.deepEqual(testFilesForWorkspace("pkg", tmp), ["src/listed.test.ts", "src/nested/orphan.test.ts"]);
+      writeFileSync(join(tmp, "pkg", "package.json"), manifest("src/*.test.ts src/nested/*.test.ts"));
+      assert.deepEqual(testFilesForWorkspace("pkg", tmp), ["src/*.test.ts", "src/nested/*.test.ts"]);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+});
 
 describe("parseLcov", () => {
   it("reads LH/LF totals per source file", () => {

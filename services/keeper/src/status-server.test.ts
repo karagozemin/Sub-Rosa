@@ -163,6 +163,39 @@ test("GET /healthz returns healthy when upstream answers", async () => {
   });
 });
 
+test("v2 status and health use v2 reads; RoundNotFound for round zero is healthy", async () => {
+  const source = makeSource();
+  await withServer({
+    ...source,
+    protocolVersion: 2,
+    reader: {
+      getRound: async () => { throw new Error("unexpected legacy read"); },
+      getBidState: async () => { throw new Error("unexpected legacy state read"); },
+      getRoundV2: async (id) => {
+        if (id === 0n) throw new Error("RoundNotFound");
+        return { ...await source.reader.getRound(id), protocol_version: 2, mode: { tag: "ReceiptOnly" } } as never;
+      },
+      getSubmissionV2: async () => ({ revealed_envelope: Buffer.from([1]), revealed_amount: undefined }) as never,
+    },
+  }, async (server) => {
+    assert.equal((await get(server, "/healthz")).status, 200);
+    const response = await get(server, "/status");
+    const body = response.body as { rounds: Array<{ revealedCount: number }>; health: { rpc: string } };
+    assert.equal(response.status, 200);
+    assert.equal(body.rounds[0].revealedCount, 2);
+    assert.equal(body.health.rpc, "ok");
+  });
+});
+
+test("GET /healthz propagates real RPC failures", async () => {
+  await withServer(makeSource({ reader: {
+    getRound: async () => { throw new Error("RPC unavailable"); },
+    getBidState: async () => { throw new Error("RPC unavailable"); },
+  } }), async (server) => {
+    assert.equal((await get(server, "/healthz")).status, 503);
+  });
+});
+
 test("GET /healthz returns 503 when drand is down", async () => {
   await withServer(
     makeSource({

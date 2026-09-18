@@ -1,9 +1,17 @@
-import type { BidState, Round, SubRosaClient } from "@sub-rosa/sdk";
+import type { Round } from "@sub-rosa/sdk";
 
 import { VOID_GRACE_SECONDS } from "./keeper.js";
 import { parseKeeperNetworkConfig } from "./network-config.js";
+import {
+  countKeeperRevealed,
+  readKeeperRound,
+  parseKeeperProtocolVersion,
+  type KeeperProtocolVersion,
+  type KeeperReader,
+} from "./protocol.js";
 
 export interface KeeperRunConfig {
+  protocolVersion: KeeperProtocolVersion;
   contractId: string;
   roundId: bigint;
   rpcUrl: string;
@@ -37,10 +45,7 @@ export interface KeeperDryRunSummary extends KeeperDryRunDecision {
   transactionsSubmitted: 0;
 }
 
-export type KeeperDryRunReader = Pick<
-  SubRosaClient,
-  "getRound" | "getBidState"
->;
+export type KeeperDryRunReader = KeeperReader;
 
 function parseBooleanEnv(value: string | undefined, name: string): boolean {
   if (value == null || value.trim() === "") return false;
@@ -87,6 +92,7 @@ export function parseKeeperRunConfig(
   const network = parseKeeperNetworkConfig(env);
 
   return {
+    protocolVersion: parseKeeperProtocolVersion(env),
     contractId: network.contractId,
     roundId: parseRoundId(env.ROUND_ID),
     rpcUrl: network.rpcUrl,
@@ -145,33 +151,20 @@ export function decideKeeperDryRunAction(
   }
 }
 
-async function countRevealedBids(
-  reader: KeeperDryRunReader,
-  roundId: bigint,
-  bidders: string[],
-): Promise<number | null> {
-  try {
-    const states: BidState[] = await Promise.all(
-      bidders.map((bidder) => reader.getBidState(roundId, bidder)),
-    );
-    return states.filter((state) => state.revealed_value != null).length;
-  } catch {
-    return null;
-  }
-}
-
 export async function buildKeeperDryRunSummary(
   reader: KeeperDryRunReader,
   roundId: bigint | number,
   nowSeconds = Math.floor(Date.now() / 1000),
+  protocolVersion: KeeperProtocolVersion = 1,
 ): Promise<KeeperDryRunSummary> {
   const rid = BigInt(roundId);
-  const round = await reader.getRound(rid);
+  const round = await readKeeperRound(reader, rid, protocolVersion);
   const bidderCount = round.bidders.length;
-  const revealedCount = await countRevealedBids(
+  const revealedCount = await countKeeperRevealed(
     reader,
     rid,
     round.bidders,
+    protocolVersion,
   );
   const decision = decideKeeperDryRunAction(
     round,

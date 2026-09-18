@@ -234,6 +234,20 @@ test("rejects hex string with 0x prefix explicitly flagged as base64", () => {
   assert.equal(result.issues[0].code, "invalid_encoding");
 });
 
+test("explicit hex does not fall back to base64", () => {
+  const result = validateEncryptedBlob("YWJj", "evidence_ciphertext", { encoding: "hex" });
+  assert.equal(result.valid, false);
+  assert.equal(result.issues[0].code, "invalid_encoding");
+});
+
+test("explicit encoding determines byte limits for ambiguous strings", () => {
+  // abcd is two bytes as hex but three as base64.
+  assert.equal(validateEncryptedBlob("abcd", "evidence_ciphertext", { encoding: "hex", maxBytes: 2 }).valid, true);
+  const base64 = validateEncryptedBlob("abcd", "evidence_ciphertext", { encoding: "base64", maxBytes: 2 });
+  assert.equal(base64.valid, false);
+  assert.equal(base64.issues[0].code, "blob_too_large");
+});
+
 test("rejects base64 string with invalid characters", () => {
   const result = validateEncryptedBlob("AAAA-AAAA", "evidence_auditor_blob");
   assert.equal(result.valid, false);

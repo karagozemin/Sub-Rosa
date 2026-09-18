@@ -22,7 +22,10 @@ import type { SettlementGuard } from "./settlement-guard.js";
 import type { KeeperLogger } from "./keeper.js";
 import { KeeperStore } from "./store.js";
 
+import type { KeeperProtocolVersion } from "./protocol.js";
+
 export interface RunWatchLoopParams {
+  protocolVersion?: KeeperProtocolVersion;
   sdk: SubRosaClient;
   drand: DrandClient;
   log: KeeperLogger;
@@ -49,12 +52,13 @@ function summarizeTick(t: WatchTickResult): string {
   return parts.join(", ");
 }
 
-async function resolveRoundIds(reader: SubRosaClient): Promise<bigint[]> {
+async function resolveRoundIds(reader: SubRosaClient, protocolVersion: KeeperProtocolVersion): Promise<bigint[]> {
   const spec = process.env.WATCH_ROUND_IDS?.trim();
   if (spec) return parseRoundIdSpec(spec);
   const single = process.env.ROUND_ID?.trim();
   if (single) return [BigInt(single)];
   return discoverRoundIds(reader, {
+    protocolVersion,
     from: BigInt(process.env.WATCH_FROM ?? "1"),
     maxProbe: Number(process.env.WATCH_MAX_ROUNDS ?? "64"),
   });
@@ -73,13 +77,14 @@ export async function runWatchLoop(params: RunWatchLoopParams): Promise<void> {
     isStopping,
   } = params;
 
-  const deps: KeeperDeps = { sdk, drand, log };
+  const protocolVersion = params.protocolVersion ?? 1;
+  const deps: KeeperDeps = { sdk, drand, log, protocolVersion };
 
   while (!isStopping()) {
     const started = Date.now();
     let discoveredIds: bigint[] = [];
     try {
-      discoveredIds = await resolveRoundIds(sdk);
+      discoveredIds = await resolveRoundIds(sdk, protocolVersion);
       for (const id of discoveredIds) {
         store.addRound(id, { contractId, network });
       }

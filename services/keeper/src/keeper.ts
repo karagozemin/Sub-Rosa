@@ -15,6 +15,7 @@
 // no mock — just the SDK over real RPC and the live Drand beacon.
 
 import type { SubRosaClient } from "@sub-rosa/sdk";
+import { RoundErrors } from "@sub-rosa/sdk";
 import {
   openBid,
   openPayload,
@@ -23,9 +24,13 @@ import {
   type PayloadEnvelope,
 } from "@sub-rosa/tlock";
 
+import { readKeeperRound, type KeeperProtocolVersion } from "./protocol.js";
+
 export type KeeperLogger = (msg: string) => void;
 
 export interface KeeperDeps {
+  /** Library calls default to legacy v1; CLI entry points explicitly select v2. */
+  protocolVersion?: KeeperProtocolVersion;
   /** A funded signer. The keeper role is permissionless — any account works. */
   sdk: SubRosaClient;
   drand: DrandClient;
@@ -56,7 +61,14 @@ export interface KeeperResult {
 }
 
 // Contract error codes that mean "someone already did this" — safe to skip.
-const IDEMPOTENT_OPEN = ["RevealAlreadyOpen", "WrongStatus", "AlreadyCleared"];
+const IDEMPOTENT_OPEN = [
+  "RevealAlreadyOpen", "WrongStatus", "AlreadyCleared", "AlreadySettled", "RoundVoided",
+];
+// Permanent rejection of one participant must not prevent other reveals.
+const INVALID_SUBMISSION = [
+  "HashMismatch", "MalformedPayload", "InvalidAmount", "BidExceedsEscrow",
+  "UnsupportedVersion", "EscrowNotAllowed",
+];
 const IDEMPOTENT_REVEAL = ["AlreadyRevealed"];
 
 export function errorName(e: unknown): string {
@@ -69,13 +81,24 @@ export function errorName(e: unknown): string {
 }
 
 export function errorMatches(e: unknown, names: string[]): boolean {
-  let blob = errorName(e);
-  try {
-    blob += " " + JSON.stringify(e);
-  } catch {
-    /* ignore */
+  const seen = new Set<unknown>();
+  let current = e;
+  while (current != null && !seen.has(current)) {
+    seen.add(current);
+    let blob = errorName(current);
+    try {
+      blob += " " + JSON.stringify(current);
+    } catch {
+      /* Circular error objects can still be matched by their message. */
+    }
+    if (names.some((name) => blob.includes(name))) return true;
+    // Soroban simulation errors may contain only the numeric contract code.
+    const code = /Error\(Contract,\s*#(\d+)\)/.exec(blob)?.[1];
+    const name = code ? RoundErrors[Number(code) as keyof typeof RoundErrors]?.message : undefined;
+    if (name && names.includes(name)) return true;
+    current = typeof current === "object" && "cause" in current ? current.cause : undefined;
   }
-  return names.some((n) => blob.includes(n));
+  return false;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -211,6 +234,8 @@ export async function keepRound(
           // canonical value is whatever we decrypted, so this only happens for a
           // corrupt seal — record and move on.
           result.skipped.push({ bidder, reason: "hash mismatch (corrupt seal)" });
+        } else if (errorMatches(e, INVALID_SUBMISSION)) {
+          result.skipped.push({ bidder, reason: `invalid payload: ${errorName(e)}` });
         } else if (errorMatches(e, ["RevealWindowClosed"])) {
           result.skipped.push({ bidder, reason: "reveal window closed" });
         } else {
@@ -327,8 +352,8 @@ export async function keepRoundV2(
       } catch (error) {
         if (errorMatches(error, IDEMPOTENT_REVEAL)) {
           result.skipped.push({ bidder, reason: "already revealed (race)" });
-        } else if (errorMatches(error, ["HashMismatch", "MalformedPayload"])) {
-          result.skipped.push({ bidder, reason: "invalid or corrupt payload" });
+        } else if (errorMatches(error, INVALID_SUBMISSION)) {
+          result.skipped.push({ bidder, reason: `invalid or corrupt payload: ${errorName(error)}` });
         } else if (errorMatches(error, ["RevealWindowClosed"])) {
           result.skipped.push({ bidder, reason: "reveal window closed" });
         } else {
@@ -535,7 +560,7 @@ export async function voidIfStale(
     finalStatus: "",
   };
 
-  let round = await sdk.getRound(rid);
+  let round = await readKeeperRound(sdk, rid, deps.protocolVersion ?? 1);
   if (round.status.tag !== "Open") {
     result.skipped.push(`status ${round.status.tag}`);
     result.finalStatus = round.status.tag;
@@ -551,17 +576,18 @@ export async function voidIfStale(
   }
 
   try {
-    await sdk.void(rid);
+    if (deps.protocolVersion === 2) await sdk.voidV2(rid);
+    else await sdk.void(rid);
     result.voided = true;
     log(`voided round ${rid} (Drand liveness / grace elapsed)`);
   } catch (e) {
-    if (errorMatches(e, ["NotVoidable", "WrongStatus", "AlreadyCleared"])) {
+    if (errorMatches(e, ["NotVoidable", "WrongStatus", "AlreadyCleared", "AlreadySettled", "RoundVoided"])) {
       result.skipped.push(errorName(e));
     } else {
       throw e;
     }
   }
-  round = await sdk.getRound(rid);
+  round = await readKeeperRound(sdk, rid, deps.protocolVersion ?? 1);
   result.finalStatus = round.status.tag;
   return result;
 }
@@ -581,8 +607,8 @@ export function parseRoundIdSpec(spec: string): bigint[] {
 }
 
 export async function discoverRoundIds(
-  reader: Pick<SubRosaClient, "getRound">,
-  opts: { from?: bigint; maxProbe?: number } = {},
+  reader: Pick<SubRosaClient, "getRound"> & Partial<Pick<SubRosaClient, "getRoundV2">>,
+  opts: { from?: bigint; maxProbe?: number; protocolVersion?: KeeperProtocolVersion } = {},
 ): Promise<bigint[]> {
   const from = opts.from ?? 1n;
   const maxProbe = opts.maxProbe ?? 64;
@@ -590,10 +616,11 @@ export async function discoverRoundIds(
   for (let i = 0n; i < BigInt(maxProbe); i++) {
     const id = from + i;
     try {
-      await reader.getRound(id);
+      await readKeeperRound(reader, id, opts.protocolVersion ?? 1);
       ids.push(id);
     } catch (e) {
-      if (errorMatches(e, ["RoundNotFound"])) break;
+      // v1 and v2 share a counter but have separate storage: missing IDs can be gaps.
+      if (errorMatches(e, ["RoundNotFound"])) continue;
       throw e;
     }
   }
@@ -619,21 +646,21 @@ export async function watchRound(
   const voidRes = await voidIfStale(deps, rid);
   if (voidRes.voided) tick.void = voidRes;
 
-  let round = await deps.sdk.getRound(rid);
+  let round = await readKeeperRound(deps.sdk, rid, deps.protocolVersion ?? 1);
   if (round.status.tag === "Open" || round.status.tag === "Revealing") {
-    tick.keep = await keepRound(
+    tick.keep = await (deps.protocolVersion === 2 ? keepRoundV2 : keepRound)(
       { ...deps, maxWaitSeconds: 0 },
       rid,
     );
-    round = await deps.sdk.getRound(rid);
+    round = await readKeeperRound(deps.sdk, rid, deps.protocolVersion ?? 1);
   }
 
   if (
     round.status.tag === "Revealing" ||
     round.status.tag === "Cleared"
   ) {
-    tick.close = await closeRound(deps, rid);
-    round = await deps.sdk.getRound(rid);
+    tick.close = await (deps.protocolVersion === 2 ? closeRoundV2 : closeRound)(deps, rid);
+    round = await readKeeperRound(deps.sdk, rid, deps.protocolVersion ?? 1);
   }
 
   tick.finalStatus = round.status.tag;

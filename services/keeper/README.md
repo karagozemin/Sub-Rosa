@@ -20,6 +20,20 @@ STELLAR_NETWORK=mainnet KEEPER_SECRET=S… npm run watch
 The keeper signer pays the network fees for open, reveal, clear, settle, or
 void transactions it submits. Read-only status calls do not submit transactions.
 
+`start`, `watch`, and `serve` default to `KEEPER_PROTOCOL_VERSION=2`. This
+selection also applies to discovery, stale-round voids, dry-run summaries and
+status reads. Set `KEEPER_PROTOCOL_VERSION=1` explicitly for legacy rounds;
+the keeper never silently falls back to another protocol after an RPC error.
+Exported library helpers retain their v1 default for compatibility; pass
+`protocolVersion: 2` to `watchRound` / `runWatchLoop`, or call `keepRoundV2` and
+`closeRoundV2` directly. Read/status helpers accept the same explicit version.
+
+Discovery scans the bounded `WATCH_FROM` / `WATCH_MAX_ROUNDS` range, including
+gaps because v1 and v2 rounds share an ID counter. Use `WATCH_ROUND_IDS` or
+adjust the range for rounds beyond that window. Participant-specific invalid
+payloads are recorded as skips while other participants continue; unexpected
+transaction/RPC failures remain visible and retryable.
+
 ## Commands
 
 | Command | Purpose |

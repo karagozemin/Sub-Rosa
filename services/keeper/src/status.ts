@@ -1,7 +1,12 @@
-import type { SubRosaClient } from "@sub-rosa/sdk";
 import { fetchRoundSignature, type DrandClient } from "@sub-rosa/tlock";
 
 import { decideKeeperDryRunAction, type KeeperDryRunPhase } from "./dry-run.js";
+import {
+  countKeeperRevealed,
+  readKeeperRound,
+  type KeeperProtocolVersion,
+  type KeeperReader,
+} from "./protocol.js";
 import type { WatchedRound } from "./store.js";
 
 export type RoundStatus =
@@ -55,9 +60,10 @@ export interface KeeperStatusResponse {
   now: string;
 }
 
-export type StatusReader = Pick<SubRosaClient, "getRound" | "getBidState">;
+export type StatusReader = KeeperReader;
 
 export interface BuildRoundStatusArgs {
+  protocolVersion?: KeeperProtocolVersion;
   reader: StatusReader;
   drand: DrandClient;
   roundId: bigint;
@@ -67,6 +73,7 @@ export interface BuildRoundStatusArgs {
 }
 
 export interface BuildStatusSource {
+  protocolVersion?: KeeperProtocolVersion;
   reader: StatusReader;
   drand: DrandClient;
   storeRounds: () => WatchedRound[];
@@ -79,21 +86,6 @@ export interface BuildStatusSource {
 
 const VOID_GRACE_SECONDS = 3600;
 
-async function countRevealed(
-  reader: StatusReader,
-  roundId: bigint,
-  bidders: string[],
-): Promise<number | null> {
-  try {
-    const states = await Promise.all(
-      bidders.map((b) => reader.getBidState(roundId, b)),
-    );
-    return states.filter((s) => s.revealed_value != null).length;
-  } catch {
-    return null;
-  }
-}
-
 export async function buildRoundStatus(
   args: BuildRoundStatusArgs,
 ): Promise<RoundStatusView> {
@@ -103,7 +95,7 @@ export async function buildRoundStatus(
 
   let round;
   try {
-    round = await reader.getRound(roundId);
+    round = await readKeeperRound(reader, roundId, args.protocolVersion ?? 1);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     const notFound = /RoundNotFound/i.test(msg);
@@ -137,7 +129,7 @@ export async function buildRoundStatus(
   const revealDeadline = Number(round.reveal_deadline);
   const revealRound = Number(round.reveal_round);
   const bidders = round.bidders ?? [];
-  const revealedCount = await countRevealed(reader, roundId, bidders);
+  const revealedCount = await countKeeperRevealed(reader, roundId, bidders, args.protocolVersion ?? 1);
 
   const info = await drand.chain().info();
   const publishAtS = info.genesis_time + info.period * revealRound;
@@ -213,7 +205,7 @@ export async function buildKeeperStatus(source: BuildStatusSource): Promise<Keep
     nowSeconds,
   } = source;
 
-  const health = await checkHealth(reader, drand);
+  const health = await checkHealth(reader, drand, source.protocolVersion);
   const nowMs = Date.now();
   const startedAt = epochMs ?? nowMs;
   const watched = storeRounds();
@@ -222,6 +214,7 @@ export async function buildKeeperStatus(source: BuildStatusSource): Promise<Keep
     watched.map((w) =>
       buildRoundStatus({
         reader,
+        protocolVersion: source.protocolVersion,
         drand,
         roundId: BigInt(w.roundId),
         watched: w,
@@ -263,13 +256,14 @@ export async function buildKeeperStatus(source: BuildStatusSource): Promise<Keep
 export async function checkHealth(
   reader: StatusReader,
   drand: DrandClient,
+  protocolVersion: KeeperProtocolVersion = 1,
 ): Promise<KeeperServiceHealth> {
   let rpc: "ok" | "degraded" | "down" = "ok";
   let drandStatus: "ok" | "degraded" | "down" = "ok";
   const reasons: string[] = [];
 
   try {
-    await reader.getRound(0n);
+    await readKeeperRound(reader, 0n, protocolVersion);
   } catch (e) {
     // A valid health probe can legitimately return RoundNotFound; that still
     // proves the RPC endpoint is reachable and returning well-formed errors.

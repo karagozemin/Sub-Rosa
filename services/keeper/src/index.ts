@@ -57,3 +57,4 @@ export {
   type KeeperStatusResponse,
 } from "./status.js";
 export { runWatchLoop, type RunWatchLoopParams } from "./watch-loop.js";
+export { parseKeeperProtocolVersion, type KeeperProtocolVersion } from "./protocol.js";

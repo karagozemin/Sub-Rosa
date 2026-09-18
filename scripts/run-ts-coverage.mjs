@@ -56,7 +56,33 @@ export function testFilesForWorkspace(relPath, root = ROOT) {
   if (idx === -1) {
     throw new Error(`Could not parse test script in ${relPath}: ${testScript}`);
   }
-  return testScript.slice(idx + marker.length).trim().split(/\s+/);
+  const files = testScript.slice(idx + marker.length).trim().split(/\s+/);
+  // Package scripts use explicit paths or single-directory shell globs such
+  // as *.test.ts. Match those without executing a shell.
+  const patterns = files.map((file) => new RegExp(`^${file
+    .replace(/^\.\//, "")
+    .split("*")
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("[^/]*")}$`));
+  const workspace = resolve(root, relPath);
+  const source = existsSync(resolve(workspace, "src")) ? resolve(workspace, "src") : workspace;
+  const missing = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (["node_modules", "dist", "coverage"].includes(entry.name)) continue;
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.test\.(ts|tsx|js|mjs)$/.test(entry.name)) {
+        const rel = relative(workspace, full).replace(/\\/g, "/");
+        if (!patterns.some((pattern) => pattern.test(rel))) missing.push(rel);
+      }
+    }
+  };
+  walk(source);
+  if (missing.length) {
+    throw new Error(`Tests missing from ${relPath}/package.json test script: ${missing.sort().join(", ")}`);
+  }
+  return files;
 }
 
 /** Count non-empty, non-comment-only lines as a coarse executable-line proxy. */

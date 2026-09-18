@@ -195,9 +195,9 @@ export function validateEncryptedBlob(
   let byteLength: number;
 
   if (typeof blob === "string") {
-    // Try hex first, then base64.
-    const hexDecoded = tryDecodeHex(blob);
-    const b64Decoded = hexDecoded ? null : tryDecodeBase64(blob);
+    // Auto-detect only when the caller has not selected an encoding.
+    const hexDecoded = options?.encoding === "base64" ? null : tryDecodeHex(blob);
+    const b64Decoded = hexDecoded || options?.encoding === "hex" ? null : tryDecodeBase64(blob);
 
     if (hexDecoded) {
       rawBytes = hexDecoded.bytes;

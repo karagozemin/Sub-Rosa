@@ -2,10 +2,12 @@ import http from "node:http";
 
 import type { DrandClient } from "@sub-rosa/tlock";
 
+import { readKeeperRound, type KeeperProtocolVersion } from "./protocol.js";
 import type { StatusReader } from "./status.js";
 import { buildKeeperStatus, type BuildStatusSource } from "./status.js";
 
 export interface StatusServerConfig {
+  protocolVersion?: KeeperProtocolVersion;
   host?: string;
   port?: number;
   contractId: string;
@@ -48,6 +50,7 @@ export function bigintReplacer(_k: string, v: unknown): unknown {
 function makeRoutes(src: BuildStatusSource): Route[] {
   const baseSource = () => ({
     reader: src.reader,
+    protocolVersion: src.protocolVersion,
     drand: src.drand,
     storeRounds: src.storeRounds,
     contractId: src.contractId,
@@ -122,7 +125,14 @@ function healthzHandler(
   return async () => {
     try {
       const info = await src.drand.chain().info();
-      await src.reader.getRound(0n);
+      try {
+        await readKeeperRound(src.reader, 0n, src.protocolVersion ?? 1);
+      } catch (error) {
+        // IDs start at 1: RoundNotFound for the zero-ID probe proves that the
+        // selected contract read reached RPC successfully.
+        const message = error instanceof Error ? error.message : String(error);
+        if (!/RoundNotFound/.test(message)) throw error;
+      }
       return {
         status: 200,
         body: {
@@ -155,6 +165,7 @@ export function createStatusServer(config: StatusServerConfig): http.Server {
 
   const source: BuildStatusSource = {
     reader: config.reader,
+    protocolVersion: config.protocolVersion,
     drand: config.drand,
     storeRounds: config.storeRounds,
     contractId: config.contractId,
