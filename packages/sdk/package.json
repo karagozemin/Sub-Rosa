@@ -19,7 +19,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/karagozemin/Sub-Rosa.git",
+    "url": "git+https://github.com/karagozemin/Sub-Rosa.git",
     "directory": "packages/sdk"
   },
   "main": "./dist/index.js",

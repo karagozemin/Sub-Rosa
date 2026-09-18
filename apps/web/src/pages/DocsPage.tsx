@@ -19,13 +19,19 @@ import {
   X,
 } from "lucide-react";
 
-import { SUB_ROSA_DEPLOYMENTS } from "@sub-rosa/sdk";
+import {
+  SUB_ROSA_DEPLOYMENTS,
+  SUB_ROSA_REVEAL_POLICY_V3_DEPLOYMENTS,
+  REVEAL_POLICY_V3_WASM_HASH,
+} from "@sub-rosa/sdk";
 import { LOGO_SRC } from "../lib/chain";
 
 const TESTNET_DEPLOYMENT = SUB_ROSA_DEPLOYMENTS.testnet;
 const MAINNET_DEPLOYMENT = SUB_ROSA_DEPLOYMENTS.mainnet;
 const CONTRACT_ID = TESTNET_DEPLOYMENT.contractId;
 const WASM_HASH = "2c7bc6b4c91940ac185df38a3d0a8532b555140d818df94f03f894e5952ebf42";
+const REVEAL_V3_TESTNET = SUB_ROSA_REVEAL_POLICY_V3_DEPLOYMENTS.testnet;
+const REVEAL_V3_CONTRACT_ID = REVEAL_V3_TESTNET.contractId;
 
 type SectionLink = { id: string; label: string; keywords: string };
 type NavGroup = { label: string; items: SectionLink[] };
@@ -48,6 +54,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "browser-wallets", label: "Browser wallets", keywords: "freighter signer frontend bindings" },
       { id: "timing", label: "Drand & deadlines", keywords: "round reveal commit timestamp" },
       { id: "lifecycle", label: "Lifecycle & keeper", keywords: "open reveal clear settle void automation" },
+      { id: "owner-reveal", label: "Owner-triggered reveal", keywords: "protocol 3 v3 policy fallback operator open createRoundV3" },
     ],
   },
   {
@@ -219,6 +226,34 @@ if (finalRound.status.tag === "Cleared" && finalRound.mode.tag === "Auction") {
   await keeperClient.settleV2(roundId);
 }`;
 
+const ownerRevealCode = `import {
+  fetchRoundSignature,
+  quicknet,
+  resolveRevealPolicyV3Deployment,
+  SubRosaClient,
+} from "@sub-rosa/sdk";
+
+// Explicit opt-in: defaults still resolve to the reviewed Core v2 contract.
+const v3 = resolveRevealPolicyV3Deployment("testnet");
+const operator = new SubRosaClient({
+  rpcUrl: v3.rpcUrl,
+  networkPassphrase: v3.networkPassphrase,
+  contractId: v3.contractId,
+  secretKey: process.env.OPERATOR_SECRET,
+});
+
+// Requires supportsRevealPolicy() === true on the target contract.
+const roundId = await operator.createRoundV3({
+  ...auctionParams, // same item/schema/mode/deadline fields as Core v2
+  revealPolicy: { type: "owner-triggered", fallbackAt: privacyAt + 300 },
+  revealDeadline: privacyAt + 900,
+});
+
+// After Drand R, only the operator can open until fallbackAt.
+const signature = await fetchRoundSignature(quicknet(), Number(revealRound));
+await operator.openRevealV2(roundId, signature);
+// If the operator never opens, anyone may open at/after fallbackAt.`;
+
 const receiptCode = `import {
   serializeReceiptV2,
   verifyReceiptV2,
@@ -253,6 +288,9 @@ const roundId = await client.createPartnerRoundV2(params);`;
 const API_ROWS = [
   ["createAssetAuctionRound", "Create a policy-enforced Auction and custody the lot", "Promise<bigint>"],
   ["createSealedProposalRound", "Create a zero-escrow ReceiptOnly round", "Promise<bigint>"],
+  ["createRoundV3", "Create a round with a reveal policy (protocol 3, opt-in)", "Promise<bigint>"],
+  ["supportsRevealPolicy", "Probe whether the contract advertises capability 3", "Promise<boolean>"],
+  ["getRevealStateV3", "Read the immutable reveal policy and opened timestamp", "Promise<RevealStateV3>"],
   ["sealAssetBid", "Encrypt and commit an amount plus optional payload to Drand R", "Promise<SealedPayload>"],
   ["sealProposal", "Encode and encrypt price, timeline, approach, and metadata", "Promise<SealedPayload>"],
   ["submitV2 / commitV2", "Authorize escrow and store the sealed submission", "Promise<void>"],
@@ -386,7 +424,7 @@ export function DocsPage({ goHome }: { goHome: () => void }) {
           )}
         </div>
         <div className="docs-top-actions">
-          <span className="docs-version">SDK v0.2.2</span>
+          <span className="docs-version">SDK v0.3.0</span>
           <a href="https://github.com/karagozemin/Sub-Rosa" target="_blank" rel="noreferrer"><Code2 size={17} />GitHub</a>
           <a href="#/pilot" target="_blank" rel="noreferrer" className="docs-pilot-link">Open pilot<ArrowRight size={16} /></a>
           <button type="button" className="docs-mobile-menu" onClick={() => setMobileNav((value) => !value)} aria-label="Toggle documentation navigation">
@@ -423,7 +461,7 @@ export function DocsPage({ goHome }: { goHome: () => void }) {
               <a href="#/pilot/the-signal"><ShieldCheck size={17} />Try deal-flow pilot</a>
             </div>
             <div className="docs-proof-strip">
-              <div><Package size={18} /><span>Public package</span><strong>@sub-rosa/sdk@0.2.2</strong></div>
+              <div><Package size={18} /><span>Public package</span><strong>@sub-rosa/sdk@0.3.0</strong></div>
               <div><Server size={18} /><span>Live contracts</span><strong>Core v2 mainnet + testnet</strong></div>
               <div><FileCheck2 size={18} /><span>Live proofs</span><strong>Testnet rounds #2 and #3</strong></div>
             </div>
@@ -519,6 +557,39 @@ export function DocsPage({ goHome }: { goHome: () => void }) {
             <Callout title="Reveal is bounded, not one giant transaction">Opening is one call. Each participant envelope is decrypted and submitted separately so a malformed ciphertext cannot make the whole cohort fail. Treat AlreadyRevealed and RevealAlreadyOpen as successful concurrent progress.</Callout>
           </section>
 
+          <section className="docs-section" id="owner-reveal">
+            <SectionHeading eyebrow="Protocol 3" title="Owner-triggered reveal">An optional versioned policy that lets a round's immutable operator choose when reveal opens after Drand R, with a mandatory permissionless fallback so a round can never be stuck.</SectionHeading>
+            <div className="docs-mode-grid">
+              <div><span>Timed (default)</span><h3>Anyone opens after R</h3><p>The classic Core v2 behavior. Once Drand publishes the round signature, any funded account can open reveal.</p></div>
+              <div><span>Owner-triggered</span><h3>Operator opens, then fallback</h3><p>After R, only the operator can open until <code>fallbackAt</code>. At or after <code>fallbackAt</code> anyone can open, so a silent operator cannot freeze escrow or the lot.</p></div>
+            </div>
+            <CodeBlock code={ownerRevealCode} />
+            <div className="docs-mode-grid">
+              <div>
+                <span>Stellar Testnet</span>
+                <h3>Protocol 3 deployment</h3>
+                <div className="docs-kv-table">
+                  <div><span>RPC</span><code>{REVEAL_V3_TESTNET.rpcUrl}</code></div>
+                  <div><span>Contract</span><code>{REVEAL_V3_CONTRACT_ID}</code></div>
+                  <div><span>WASM SHA-256</span><code>{REVEAL_POLICY_V3_WASM_HASH}</code></div>
+                </div>
+                <a href={`https://stellar.expert/explorer/testnet/contract/${REVEAL_V3_CONTRACT_ID}`} target="_blank" rel="noreferrer">View protocol 3 contract<ExternalLink size={13} /></a>
+              </div>
+              <div>
+                <span>Constraints</span>
+                <h3>Timing rules</h3>
+                <ul>
+                  <li><code>fallbackAt</code> must be after Drand R</li>
+                  <li><code>revealDeadline</code> ≥ <code>fallbackAt</code> + 300s</li>
+                  <li>Applies to both Auction and ReceiptOnly</li>
+                  <li>The operator is the immutable controller</li>
+                </ul>
+              </div>
+            </div>
+            <Callout title="Explicit opt-in; defaults are unchanged" tone="warning">This is a separate deployment. The SDK/UI defaults still resolve to the reviewed Core v2 contract; reach protocol 3 only by passing this contract id (for example via <code>resolveRevealPolicyV3Deployment</code>). Mainnet is pending an independent funds-handling review.</Callout>
+            <Callout title="Opening does not extend confidentiality">When Drand publishes the signature, anyone holding a ciphertext can decrypt off-chain, including the operator. The fallback bounds how long the operator can delay on-chain opening; it does not add privacy. Use Timed when operator discretion is undesirable.</Callout>
+          </section>
+
           <section className="docs-section" id="policies">
             <SectionHeading eyebrow="Fairness" title="Fixed escrow and eligibility">Partner policy closes two practical integration gaps while preserving compatibility with earlier Core v2 rounds.</SectionHeading>
             <div className="docs-policy-list">
@@ -554,7 +625,7 @@ export function DocsPage({ goHome }: { goHome: () => void }) {
               <div className="head" role="row"><span>Method</span><span>Purpose</span><span>Returns</span></div>
               {API_ROWS.map(([method, purpose, returns]) => <div role="row" key={method}><code>{method}</code><span>{purpose}</span><code>{returns}</code></div>)}
             </div>
-            <div className="docs-package-row"><div><Package size={18} /><span>@sub-rosa/sdk</span><code>0.2.1</code></div><div><Package size={18} /><span>@sub-rosa/tlock</span><code>0.2.0</code></div><div><Package size={18} /><span>@sub-rosa/round-bindings</span><code>0.2.0</code></div></div>
+            <div className="docs-package-row"><div><Package size={18} /><span>@sub-rosa/sdk</span><code>0.3.0</code></div><div><Package size={18} /><span>@sub-rosa/tlock</span><code>0.2.0</code></div><div><Package size={18} /><span>@sub-rosa/round-bindings</span><code>0.2.0</code></div></div>
           </section>
 
           <section className="docs-section" id="errors">
