@@ -76,6 +76,7 @@ const EXPECTED_EXPORTS = [
   "parsePublishedAuctionEvidence",
   "payloadCommitment",
   "quicknet",
+  "drandRoundTime",
   "redactReceipt",
   "resolveSubRosaDeployment",
   "roundInSeconds",

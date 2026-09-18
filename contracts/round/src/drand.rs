@@ -53,12 +53,12 @@ pub fn verify_round(
     bls.pairing_check(g1_points, g2_points)
 }
 
-/// Wall-clock time (unix seconds) at which Drand round `round` is published.
+/// Scheduled Unix seconds for Drand round `round`. Round 1 is at genesis.
 ///
 /// Saturating arithmetic: an absurdly large `round` clamps to `u64::MAX`, which
 /// `create_round` then rejects via its deadline checks rather than panicking.
 pub fn time_of_round(config: &GlobalConfig, round: u64) -> u64 {
     config
         .drand_genesis
-        .saturating_add(config.drand_period.saturating_mul(round))
+        .saturating_add(config.drand_period.saturating_mul(round.saturating_sub(1)))
 }

@@ -93,11 +93,11 @@ async function main() {
   });
 
   const now = Math.floor(Date.now() / 1000);
-  // Pick R so time(R) = genesis + period·R lands ~5 min in the future, then
+  // Pick R so time(R) = genesis + period·(R - 1) lands ~5 min in the future, then
   // bracket it: now < commit_deadline < time(R) < reveal_deadline.
   const tReveal = now + 300;
-  const revealRound = Math.ceil((tReveal - Number(DRAND_GENESIS)) / Number(DRAND_PERIOD));
-  const tRevealExact = Number(DRAND_GENESIS) + Number(DRAND_PERIOD) * revealRound;
+  const revealRound = Math.ceil((tReveal - Number(DRAND_GENESIS)) / Number(DRAND_PERIOD)) + 1;
+  const tRevealExact = Number(DRAND_GENESIS) + Number(DRAND_PERIOD) * (revealRound - 1);
   const commitDeadline = now + 90;
   const revealDeadline = tRevealExact + 300;
 

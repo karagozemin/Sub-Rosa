@@ -60,7 +60,7 @@ import {
 const drand = quicknet();
 const chain = await drand.chain().info();
 const revealRound = await roundInSeconds(drand, 300);
-const revealAt = Number(chain.genesis_time) + Number(chain.period) * revealRound;
+const revealAt = Number(chain.genesis_time) + Number(chain.period) * (revealRound - 1);
 const auditor = generateAuditorKeypair();
 
 const roundId = await createAssetAuctionRound(sellerClient, {

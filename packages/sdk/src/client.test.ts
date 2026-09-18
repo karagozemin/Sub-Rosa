@@ -439,3 +439,42 @@ describe("SubRosaClient external submitter failures", () => {
     });
   });
 });
+
+
+describe("Owner-triggered API", () => {
+  it("capability check falls back only for an explicitly absent function", async () => {
+    const client = new SubRosaClient(BASE_CONFIG);
+    client.contract.protocol_version = async () => ({ result: 3 }) as any;
+    assert.equal(await client.supportsRevealPolicy(), true);
+    client.contract.protocol_version = async () => { throw new Error("protocol_version: trying to invoke non-existent contract function"); };
+    assert.equal(await client.supportsRevealPolicy(), false);
+    client.contract.protocol_version = async () => { throw new Error("RPC offline"); };
+    await assert.rejects(client.supportsRevealPolicy(), /RPC offline/);
+  });
+
+  it("rejects an insufficient reveal window before any transaction submission", async () => {
+    const client = new SubRosaClient({ ...BASE_CONFIG, publicKey: PUBLIC_KEY });
+    await assert.rejects(client.createRoundV3({
+      itemRef: new Uint8Array(32), schemaRef: new Uint8Array(32), mode: "ReceiptOnly",
+      revealRound: 10, commitDeadline: 1000, revealDeadline: 1500, auditorPubkey: new Uint8Array(), fixedEscrow: 0n,
+      revealPolicy: { type: "owner-triggered", fallbackAt: 1201 },
+    }), /at least 300 seconds/);
+  });
+
+  it("preflights v3 with the same policy arguments used by creation", async () => {
+    const client = new SubRosaClient({ ...BASE_CONFIG, publicKey: PUBLIC_KEY });
+    let captured: any;
+    client.contract.create_round_v3 = async (args) => {
+      captured = args;
+      return { result: { unwrap: () => 9n }, simulation: { transactionData: undefined } } as any;
+    };
+    const result = await client.preflightCreateRoundV3({
+      itemRef: new Uint8Array(32), schemaRef: new Uint8Array(32), mode: "ReceiptOnly",
+      revealRound: 10, commitDeadline: 1000, revealDeadline: 1500, auditorPubkey: new Uint8Array(), fixedEscrow: 0n,
+      revealPolicy: { type: "owner-triggered", fallbackAt: 1200 },
+    });
+    assert.equal(captured.operator, PUBLIC_KEY);
+    assert.deepEqual(captured.policy.reveal, { tag: "OwnerTriggered", values: [1200n] });
+    assert.equal(result.operation, "create_round_v3");
+  });
+});

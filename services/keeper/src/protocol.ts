@@ -1,10 +1,10 @@
-import type { SubRosaClient } from "@sub-rosa/sdk";
+import type { SubRosaClient, Round, RoundV2, RevealStateV3 } from "@sub-rosa/sdk";
 
 export type KeeperProtocolVersion = 1 | 2;
 
 // Optional v2 methods preserve compatibility with existing v1 read-only adapters.
 export type KeeperReader = Pick<SubRosaClient, "getRound" | "getBidState"> &
-  Partial<Pick<SubRosaClient, "getRoundV2" | "getSubmissionV2">>;
+  Partial<Pick<SubRosaClient, "getRoundV2" | "getSubmissionV2" | "getRevealStateV3">>;
 
 export function parseKeeperProtocolVersion(
   env: Record<string, string | undefined> = process.env,
@@ -44,4 +44,16 @@ export async function countKeeperRevealed(
   } catch {
     return null;
   }
+}
+
+/** New records require their policy; never silently downgrade on RPC/storage errors. */
+export async function readKeeperRevealState(
+  reader: Pick<KeeperReader, "getRevealStateV3">,
+  roundId: bigint,
+  round: Round | RoundV2,
+): Promise<RevealStateV3 | undefined> {
+  if (!("protocol_version" in round) || round.protocol_version === 2) return undefined;
+  if (round.protocol_version !== 3) throw new Error(`unsupported round protocol ${round.protocol_version}`);
+  if (!reader.getRevealStateV3) throw new Error("v3 reader requires getRevealStateV3");
+  return reader.getRevealStateV3(roundId);
 }

@@ -1,5 +1,5 @@
 import { ArrowUpRight } from "lucide-react";
-import { LOGO_SRC } from "../lib/chain";
+import { LOGO_SRC } from "../config/brand";
 
 export function SiteFooter() {
   return (

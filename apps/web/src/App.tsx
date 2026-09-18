@@ -1,23 +1,24 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { getUseCase } from "./config/useCases";
 import type { UseCaseId } from "./config/useCases";
 import { hashFor, routeFromHash, type RouteState } from "./config/routing";
-import { ArchitecturePage } from "./pages/ArchitecturePage";
-import { ConfigBanner } from "./components/ConfigBanner";
-import { DashboardPage } from "./pages/DashboardPage";
-import { DemoPage } from "./pages/DemoPage";
-import { DocsPage } from "./pages/DocsPage";
 import { LandingPage } from "./pages/LandingPage";
-import { PilotCatalogPage } from "./pages/PilotCatalogPage";
-import { PilotPage } from "./pages/PilotPage";
-import { SignalPilotPage } from "./pages/SignalPilotPage";
-import { TrustlessWorkPilotPage } from "./pages/TrustlessWorkPilotPage";
-import { OfferHubPilotPage } from "./pages/OfferHubPilotPage";
-import { ActaPilotPage } from "./pages/ActaPilotPage";
-import { OpenX402PilotPage } from "./pages/OpenX402PilotPage";
-import { PublishedReceiptPage } from "./pages/PublishedReceiptPage";
 import { SiteFooter } from "./components/SiteFooter";
 import { ToastProvider } from "./ui/Toast";
+
+const ArchitecturePage = lazy(() => import("./pages/ArchitecturePage").then((module) => ({ default: module.ArchitecturePage })));
+const ConfigBanner = lazy(() => import("./components/ConfigBanner").then((module) => ({ default: module.ConfigBanner })));
+const DashboardPage = lazy(() => import("./pages/DashboardPage").then((module) => ({ default: module.DashboardPage })));
+const DemoPage = lazy(() => import("./pages/DemoPage").then((module) => ({ default: module.DemoPage })));
+const DocsPage = lazy(() => import("./pages/DocsPage").then((module) => ({ default: module.DocsPage })));
+const PilotCatalogPage = lazy(() => import("./pages/PilotCatalogPage").then((module) => ({ default: module.PilotCatalogPage })));
+const PilotPage = lazy(() => import("./pages/PilotPage").then((module) => ({ default: module.PilotPage })));
+const SignalPilotPage = lazy(() => import("./pages/SignalPilotPage").then((module) => ({ default: module.SignalPilotPage })));
+const TrustlessWorkPilotPage = lazy(() => import("./pages/TrustlessWorkPilotPage").then((module) => ({ default: module.TrustlessWorkPilotPage })));
+const OfferHubPilotPage = lazy(() => import("./pages/OfferHubPilotPage").then((module) => ({ default: module.OfferHubPilotPage })));
+const ActaPilotPage = lazy(() => import("./pages/ActaPilotPage").then((module) => ({ default: module.ActaPilotPage })));
+const OpenX402PilotPage = lazy(() => import("./pages/OpenX402PilotPage").then((module) => ({ default: module.OpenX402PilotPage })));
+const PublishedReceiptPage = lazy(() => import("./pages/PublishedReceiptPage").then((module) => ({ default: module.PublishedReceiptPage })));
 
 export default function App() {
   const [route, setRoute] = useState<RouteState>(routeFromHash);
@@ -37,6 +38,7 @@ export default function App() {
 
   return (
     <ToastProvider>
+      <Suspense fallback={<main role="status" aria-live="polite" style={{ minHeight: "60vh", display: "grid", placeItems: "center" }}>Loading page…</main>}>
       {route.page === "landing" ? (
         <LandingPage
           onDemo={() => navigate("demo", "auction")}
@@ -79,6 +81,7 @@ export default function App() {
           )}
         </>
       )}
+      </Suspense>
       <SiteFooter />
     </ToastProvider>
   );

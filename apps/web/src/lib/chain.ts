@@ -12,7 +12,7 @@ import {
 import { useMemo } from "react";
 import { resolvePublicNetworkConfig } from "./config";
 
-export const LOGO_SRC = "/sub-rosa-logo.png";
+export { LOGO_SRC } from "../config/brand";
 const PUBLIC_NETWORK_CONFIG = resolvePublicNetworkConfig();
 export const STELLAR_NETWORK = PUBLIC_NETWORK_CONFIG.network;
 export const RPC_URL = PUBLIC_NETWORK_CONFIG.rpcUrl;

@@ -78,7 +78,7 @@ export async function runWatchLoop(params: RunWatchLoopParams): Promise<void> {
   } = params;
 
   const protocolVersion = params.protocolVersion ?? 1;
-  const deps: KeeperDeps = { sdk, drand, log, protocolVersion };
+  const deps: KeeperDeps = { sdk, drand, log, protocolVersion, settlementGuard };
 
   while (!isStopping()) {
     const started = Date.now();
@@ -107,12 +107,6 @@ export async function runWatchLoop(params: RunWatchLoopParams): Promise<void> {
       const roundId = BigInt(storedRound.roundId);
       if (isStopping()) break;
       try {
-        const canSettleCheck = settlementGuard.canSettle(roundId);
-        if (!canSettleCheck.allowed) {
-          // Settlement already in-flight or terminal; skip the close phase.
-          // The keep phase may still open/reveal; we let watchRound proceed but
-          // settle manipulation is avoided by the guard's skip marker.
-        }
         const tick = await watchRound(deps, roundId);
         const active =
           tick.finalStatus !== "Settled" && tick.finalStatus !== "Voided";
@@ -144,10 +138,8 @@ export async function runWatchLoop(params: RunWatchLoopParams): Promise<void> {
         }
       } catch (e) {
         log(`[round ${roundId}] tick failed: ${e instanceof Error ? e.message : String(e)}`);
-        settlementGuard.markRetryable(
-          roundId,
-          e instanceof Error ? e.message : String(e),
-        );
+        // Only the settlement attempt may release its reservation. A failure
+        // in discovery/reveal must not unlock another pass's in-flight settle.
         const stored = store.getRound(roundId);
         store.updateRound(roundId, {
           retryCount: (stored?.retryCount ?? 0) + 1,

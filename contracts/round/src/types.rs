@@ -41,6 +41,8 @@ pub enum Error {
     RoundDurationTooLong = 43,
     ParticipantNotEligible = 44,
     EscrowPolicyMismatch = 45,
+    InvalidRevealPolicy = 46,
+    RevealPolicyMissing = 47,
 }
 
 /// Round lifecycle. Mirrors the state machine in PRD §6.
@@ -94,6 +96,30 @@ pub struct RoundPolicyV2 {
     pub fixed_escrow: i128,
     /// Empty means open participation; otherwise only listed addresses may commit.
     pub eligible_participants: Vec<Address>,
+}
+
+/// Opening authorization only; Drand publication still permits off-chain decryption.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum RevealPolicy {
+    Timed,
+    /// Immutable fallback Unix seconds. Before it, only round.operator may open.
+    OwnerTriggered(u64),
+}
+
+/// Required for protocol_version=3 records. Missing state must fail closed.
+#[contracttype]
+#[derive(Clone)]
+pub struct RevealStateV3 {
+    pub policy: RevealPolicy,
+    pub opened_at: Option<u64>,
+}
+
+#[contracttype]
+#[derive(Clone)]
+pub struct RoundPolicyV3 {
+    pub partner: RoundPolicyV2,
+    pub reveal: RevealPolicy,
 }
 
 /// Contract-global configuration, set once at deploy in Instance storage.
@@ -230,4 +256,5 @@ pub enum DataKey {
     SubmissionV2(u64, Address),
     SealV2(u64, Address),
     PolicyV2(u64),
+    RevealV3(u64),
 }

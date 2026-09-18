@@ -9,7 +9,7 @@ use soroban_sdk::testutils::storage::Temporary as TemporaryStorageTest;
 use crate::drand;
 use crate::storage::{seal_ttl_for_reveal_deadline, TEMP_THRESHOLD};
 use crate::types::{
-    ClearingRule, DataKey, Error, GlobalConfig, RoundMode, RoundPolicyV2, SettlementConfig, Status,
+    ClearingRule, DataKey, Error, GlobalConfig, RoundMode, RoundPolicyV2, SettlementConfig, Status, RevealPolicy, RoundPolicyV3,
 };
 use crate::{SubRosaRound, SubRosaRoundClient};
 
@@ -118,7 +118,7 @@ fn setup_drand() -> (Fixture, u64, u64, u64) {
     );
     let client = SubRosaRoundClient::new(&env, &contract_id);
 
-    let t_reveal = VEC_GENESIS + VEC_PERIOD * VEC_ROUND;
+    let t_reveal = VEC_GENESIS + VEC_PERIOD * (VEC_ROUND - 1);
     let commit_deadline = t_reveal - 100;
     let reveal_deadline = t_reveal + 200;
     env.ledger().with_mut(|l| l.timestamp = t_reveal - 200);
@@ -1032,6 +1032,47 @@ fn drand_bls_verify_real_vector() {
 }
 
 #[test]
+fn drand_round_one_is_at_genesis_and_large_rounds_saturate() {
+    let env = Env::default();
+    let cfg = config_with(&env, VEC_PUBKEY_C1C0, VEC_NEGGEN_C1C0);
+    assert_eq!(drand::time_of_round(&cfg, 1), VEC_GENESIS);
+    assert_eq!(drand::time_of_round(&cfg, 2), VEC_GENESIS + VEC_PERIOD);
+    assert_eq!(drand::time_of_round(&cfg, u64::MAX), u64::MAX);
+}
+
+#[test]
+fn commit_must_close_before_actual_drand_publication_for_v1_and_v2() {
+    let (f, actual_reveal, _, reveal_deadline) = setup_drand();
+    let operator = Address::generate(&f.env);
+    let settlement = SettlementConfig {
+        mode: RoundMode::ReceiptOnly,
+        payment_asset: None,
+        lot_asset: None,
+        lot_amount: 0,
+    };
+    // These three seconds used to pass the erroneous genesis + period * R gate.
+    for deadline in actual_reveal..actual_reveal + VEC_PERIOD {
+        assert_try_create_round_err(f.client.try_create_round(
+            &operator, &b32(&f.env, 1), &VEC_ROUND, &ClearingRule::HighestBid,
+            &deadline, &reveal_deadline, &Bytes::new(&f.env),
+        ), Error::CommitDeadlineAfterReveal);
+        assert_try_create_round_err(f.client.try_create_round_v2(
+            &operator, &b32(&f.env, 1), &b32(&f.env, 2), &settlement,
+            &VEC_ROUND, &ClearingRule::HighestBid, &deadline, &reveal_deadline,
+            &Bytes::new(&f.env), &25,
+        ), Error::CommitDeadlineAfterReveal);
+    }
+    let id = f.client.create_round_v2(
+        &operator, &b32(&f.env, 1), &b32(&f.env, 2), &settlement,
+        &VEC_ROUND, &ClearingRule::HighestBid, &(actual_reveal - 1),
+        &reveal_deadline, &Bytes::new(&f.env), &25,
+    );
+    f.env.ledger().with_mut(|l| l.timestamp = actual_reveal);
+    f.client.open_reveal_v2(&id, &real_sig(&f.env));
+    assert_eq!(f.client.get_round_v2(&id).status, Status::Revealing);
+}
+
+#[test]
 fn drand_bls_verify_rejects_wrong_round() {
     let env = Env::default();
     let sig = hexn::<96>(&env, VEC_SIG_G1);
@@ -1068,7 +1109,7 @@ fn setup_real_drand() -> Fixture {
 #[test]
 fn full_lifecycle_real_drand_signature() {
     let f = setup_real_drand();
-    let t_reveal = VEC_GENESIS + VEC_PERIOD * VEC_ROUND;
+    let t_reveal = VEC_GENESIS + VEC_PERIOD * (VEC_ROUND - 1);
     let commit_deadline = t_reveal - 10;
     let reveal_deadline = t_reveal + 100;
     f.env.ledger().with_mut(|l| l.timestamp = t_reveal - 100);
@@ -1838,6 +1879,8 @@ pub(super) const DOCUMENTED_ERROR_CODES: &[(Error, u32)] = &[
     (Error::RoundDurationTooLong, 43),
     (Error::ParticipantNotEligible, 44),
     (Error::EscrowPolicyMismatch, 45),
+    (Error::InvalidRevealPolicy, 46),
+    (Error::RevealPolicyMissing, 47),
 ];
 
 /// Convert an `Error` to its on-chain discriminant using the [`repr(u32)`]
@@ -1882,6 +1925,8 @@ pub(super) fn variant_name(e: Error) -> &'static str {
         Error::RoundDurationTooLong => "RoundDurationTooLong",
         Error::ParticipantNotEligible => "ParticipantNotEligible",
         Error::EscrowPolicyMismatch => "EscrowPolicyMismatch",
+        Error::InvalidRevealPolicy => "InvalidRevealPolicy",
+        Error::RevealPolicyMissing => "RevealPolicyMissing",
     }
 }
 
@@ -1929,7 +1974,7 @@ fn error_table_enumerates_every_variant() {
     // DOCUMENTED_ERROR_CODES.
     assert_eq!(
         DOCUMENTED_ERROR_CODES.len(),
-        33,
+        35,
         "DOCUMENTED_ERROR_CODES appears missing entries. The exhaustive \
          `variant_name` match already enforces parity at compile time — \
          update it together with this list and contracts/round/ERRORS.md."
@@ -1946,11 +1991,155 @@ fn error_codes_use_reserved_ranges() {
     // logging conventions — and update ERRORS.md at the same time.
     for (variant, code) in DOCUMENTED_ERROR_CODES {
         let name = variant_name(*variant);
-        let in_range = matches!(*code, 1..=4 | 10..=22 | 30..=45);
+        let in_range = matches!(*code, 1..=4 | 10..=22 | 30..=47);
         assert!(
             in_range,
             "{name} = {code} falls outside the documented code ranges; \
              update contracts/round/ERRORS.md if you intentionally added a new category"
         );
     }
+}
+
+
+fn policy_v3(f: &Fixture, mode: RoundMode, reveal: RevealPolicy) -> RoundPolicyV3 {
+    let auction = mode == RoundMode::Auction;
+    RoundPolicyV3 {
+        partner: RoundPolicyV2 {
+            settlement: SettlementConfig {
+                mode,
+                payment_asset: if auction { Some(f.usdc_token.address.clone()) } else { None },
+                lot_asset: if auction { Some(f.usdc_token.address.clone()) } else { None },
+                lot_amount: if auction { 1 } else { 0 },
+            },
+            fixed_escrow: if auction { 1000 } else { 0 },
+            eligible_participants: Vec::new(&f.env),
+        },
+        reveal,
+    }
+}
+
+fn create_v3(f: &Fixture, operator: &Address, policy: &RoundPolicyV3, commit: u64, deadline: u64) -> u64 {
+    f.client.create_round_v3(operator, &b32(&f.env, 1), &b32(&f.env, 2), policy,
+        &VEC_ROUND, &ClearingRule::HighestBid, &commit, &deadline, &Bytes::new(&f.env), &25)
+}
+
+#[test]
+fn v3_owner_auth_privacy_and_permissionless_fallback() {
+    let (f, privacy, commit, _) = setup_drand();
+    let owner = Address::generate(&f.env);
+    let fallback = privacy + 60;
+    let id = create_v3(&f, &owner, &policy_v3(&f, RoundMode::ReceiptOnly, RevealPolicy::OwnerTriggered(fallback)), commit, fallback + 300);
+    assert_eq!(f.client.get_round_v2(&id).protocol_version, 3);
+    f.env.set_auths(&[]);
+    f.env.ledger().with_mut(|l| l.timestamp = privacy - 1);
+    assert_try_contract_err(f.client.try_open_reveal_v2(&id, &real_sig(&f.env)), Error::CommitNotClosed);
+    f.env.ledger().with_mut(|l| l.timestamp = privacy);
+    assert!(f.client.try_open_reveal_v2(&id, &real_sig(&f.env)).is_err());
+    f.env.ledger().with_mut(|l| l.timestamp = fallback - 1);
+    assert!(f.client.try_open_reveal_v2(&id, &real_sig(&f.env)).is_err());
+    // At the exact fallback boundary no owner signature is needed, but BLS is.
+    f.env.ledger().with_mut(|l| l.timestamp = fallback);
+    assert!(f.client.try_open_reveal_v2(&id, &BytesN::from_array(&f.env, &[0; 96])).is_err());
+    f.client.open_reveal_v2(&id, &real_sig(&f.env));
+    assert_eq!(f.client.get_reveal_state_v3(&id).opened_at, Some(fallback));
+    assert!(f.env.auths().is_empty());
+}
+
+#[test]
+fn v3_owner_open_requires_exact_owner_and_then_reveal_is_permissionless() {
+    use soroban_sdk::{testutils::{MockAuth, MockAuthInvoke}, IntoVal};
+    let (f, privacy, commit, _) = setup_drand();
+    let owner = Address::generate(&f.env);
+    let other = Address::generate(&f.env);
+    let id = create_v3(&f, &owner, &policy_v3(&f, RoundMode::ReceiptOnly, RevealPolicy::OwnerTriggered(privacy + 60)), commit, privacy + 360);
+    let envelope = payload_envelope(&f.env, None, b"proposal", 9);
+    commit_payload_v2(&f, id, &other, &envelope, 0);
+    f.env.set_auths(&[]);
+    f.env.ledger().with_mut(|l| l.timestamp = privacy);
+    let sig = real_sig(&f.env);
+    let invocation = MockAuthInvoke { contract: &f.client.address, fn_name: "open_reveal_v2", args: (id, sig.clone()).into_val(&f.env), sub_invokes: &[] };
+    assert!(f.client.mock_auths(&[MockAuth { address: &other, invoke: &invocation }]).try_open_reveal_v2(&id, &sig).is_err());
+    f.client.mock_auths(&[MockAuth { address: &owner, invoke: &invocation }]).open_reveal_v2(&id, &sig);
+    assert_eq!(f.env.auths()[0].0, owner);
+    f.env.set_auths(&[]);
+    f.client.reveal_v2(&id, &other, &envelope);
+    f.env.ledger().with_mut(|l| l.timestamp = privacy + 361);
+    f.client.clear_v2(&id);
+    assert_eq!(f.client.get_round_v2(&id).status, Status::Settled);
+}
+
+#[test]
+fn v3_rejects_short_or_invalid_fallback_windows_for_both_modes() {
+    let (f, privacy, commit, _) = setup_drand();
+    let owner = Address::generate(&f.env);
+    for mode in [RoundMode::Auction, RoundMode::ReceiptOnly] {
+        for (fallback, deadline) in [(privacy, privacy + 300), (privacy - 1, privacy + 300), (privacy + 60, privacy + 359), (privacy + 600, privacy + 360)] {
+            assert_try_create_round_err(f.client.try_create_round_v3(&owner, &b32(&f.env, 1), &b32(&f.env, 2),
+                &policy_v3(&f, mode, RevealPolicy::OwnerTriggered(fallback)), &VEC_ROUND, &ClearingRule::HighestBid,
+                &commit, &deadline, &Bytes::new(&f.env), &25), Error::InvalidRevealPolicy);
+        }
+    }
+}
+
+#[test]
+fn v3_missing_policy_fails_closed_and_late_open_can_be_voided() {
+    let (f, privacy, commit, _) = setup_drand();
+    let owner = Address::generate(&f.env);
+    let policy = policy_v3(&f, RoundMode::ReceiptOnly, RevealPolicy::OwnerTriggered(privacy + 60));
+    let missing = create_v3(&f, &owner, &policy, commit, privacy + 360);
+    let late = create_v3(&f, &owner, &policy, commit, privacy + 360);
+    f.env.as_contract(&f.client.address, || f.env.storage().persistent().remove(&DataKey::RevealV3(missing)));
+    f.env.set_auths(&[]);
+    f.env.ledger().with_mut(|l| l.timestamp = privacy + 60);
+    assert_try_contract_err(f.client.try_open_reveal_v2(&missing, &real_sig(&f.env)), Error::RevealPolicyMissing);
+    f.env.ledger().with_mut(|l| l.timestamp = privacy + 361);
+    assert_try_contract_err(f.client.try_open_reveal_v2(&late, &real_sig(&f.env)), Error::RevealWindowClosed);
+    f.env.ledger().with_mut(|l| l.timestamp = privacy + 360 + 3601);
+    f.client.void_v2(&late);
+    f.client.void_v2(&missing);
+    assert_eq!(f.client.get_round_v2(&late).status, Status::Voided);
+}
+
+#[test]
+fn v3_auction_fallback_settlement_and_missing_owner_refunds() {
+    for open in [true, false] {
+        let (f, privacy, commit, _) = setup_drand();
+        let owner = funded_bidder(&f, 1);
+        let bidder = funded_bidder(&f, 1000);
+        let id = create_v3(&f, &owner, &policy_v3(&f, RoundMode::Auction, RevealPolicy::OwnerTriggered(privacy + 60)), commit, privacy + 360);
+        let envelope = payload_envelope(&f.env, Some(700), b"lot", 7);
+        commit_payload_v2(&f, id, &bidder, &envelope, 1000);
+        f.env.set_auths(&[]);
+        if open {
+            f.env.ledger().with_mut(|l| l.timestamp = privacy + 60);
+            f.client.open_reveal_v2(&id, &real_sig(&f.env));
+            // The full guaranteed window includes its final second.
+            f.env.ledger().with_mut(|l| l.timestamp = privacy + 360);
+            f.client.reveal_v2(&id, &bidder, &envelope);
+            f.env.ledger().with_mut(|l| l.timestamp = privacy + 361);
+            f.client.clear_v2(&id);
+            f.client.settle_v2(&id);
+            assert_eq!(f.usdc_token.balance(&owner), 700);
+            assert_eq!(f.usdc_token.balance(&bidder), 301);
+        } else {
+            f.env.ledger().with_mut(|l| l.timestamp = privacy + 3961);
+            f.client.void_v2(&id);
+            assert_eq!(f.usdc_token.balance(&owner), 1);
+            assert_eq!(f.usdc_token.balance(&bidder), 1000);
+        }
+        assert_eq!(f.usdc_token.balance(&f.client.address), 0);
+    }
+}
+
+#[test]
+fn v3_timed_and_legacy_v2_remain_permissionless() {
+    let (f, privacy, commit, deadline) = setup_drand();
+    let owner = Address::generate(&f.env);
+    let v3 = create_v3(&f, &owner, &policy_v3(&f, RoundMode::ReceiptOnly, RevealPolicy::Timed), commit, deadline);
+    let v2 = drand_round_v2(&f, &owner, commit, deadline, RoundMode::ReceiptOnly, 10);
+    f.env.set_auths(&[]);
+    f.env.ledger().with_mut(|l| l.timestamp = privacy);
+    f.client.open_reveal_v2(&v3, &real_sig(&f.env));
+    f.client.open_reveal_v2(&v2, &real_sig(&f.env));
+    assert_try_contract_err(f.client.try_get_reveal_state_v3(&v2), Error::UnsupportedVersion);
 }

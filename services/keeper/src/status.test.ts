@@ -198,7 +198,7 @@ describe("buildRoundStatus — ready-to-open", () => {
       reader: readerOk({
         status: "Open",
         revealRound: 1,
-        commitDeadline: now + 3600,
+        commitDeadline: now - 1,
         revealDeadline: now + 7200,
         bidders: ["GCCC"],
       }),
@@ -358,4 +358,16 @@ describe("buildKeeperStatus — no secret material", () => {
     assert.doesNotMatch(json, /S[A-Z0-9]{50,}/, "must not contain Stellar secret keys");
     assert.doesNotMatch(json, /secret/i, "must not contain 'secret' substring");
   });
+});
+
+
+it("does not advertise permissionless opening before commit closes or after reveal expires", async () => {
+  for (const [commitDeadline, revealDeadline] of [[2000, 3000], [500, 900]]) {
+    const result = await buildKeeperStatus(makeSource({
+      reader: readerOk({ status: "Open", revealRound: 1, commitDeadline, revealDeadline, bidders: [] }),
+      drand: drandOk(1, 3, true), nowSeconds: 1000,
+      storeRounds: () => [{ roundId: "1", lastStatus: "Open", retryCount: 0 }] as WatchedRound[],
+    }));
+    assert.equal(result.rounds[0].revealReady, false);
+  }
 });

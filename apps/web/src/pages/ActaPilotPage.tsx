@@ -1,3 +1,4 @@
+import { drandRoundTime } from "@sub-rosa/tlock";
 import { Buffer } from "buffer";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -410,7 +411,7 @@ export function ActaPilotPage({ goHome }: ActaPilotPageProps) {
       const drand = quicknet();
       const revealRound = await roundInSeconds(drand, 135);
       const info = await drand.chain().info();
-      const revealAt = Number(info.genesis_time) + Number(info.period) * revealRound;
+      const revealAt = drandRoundTime(revealRound, info);
       const params = buildActaRoundParams({
         operator: address,
         itemRef: await sha256Bytes(`${workspace.title}:${address}:${Date.now()}`),

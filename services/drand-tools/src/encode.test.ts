@@ -3,6 +3,17 @@ import { test } from "node:test";
 
 import { bls12_381 as bls } from "@noble/curves/bls12-381.js";
 import { sha256 } from "@noble/hashes/sha2.js";
+import { roundAt, timeOfRound, type ChainInfo } from "./quicknet.js";
+
+test("Drand schedule starts round one at genesis and roundAt inverts timeOfRound", () => {
+  const info = { genesis_time: 1000, period: 3 } as ChainInfo;
+  assert.equal(timeOfRound(info, 1), 1000);
+  for (const round of [2, 10, 29_155_653]) {
+    const time = timeOfRound(info, round);
+    assert.equal(roundAt(info, time), round);
+    assert.equal(roundAt(info, time - 1), round - 1);
+  }
+});
 
 import {
   encodeG1,

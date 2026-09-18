@@ -45,7 +45,9 @@ Round receipts (`docs/RECEIPTS.md`) are **offline only** — the verifier checks
 ## Operational
 
 - Drand quicknet must publish round R for reveal to open; keeper can void after grace if R never arrives.
-- Reveal opening is permissionless, but envelopes are decrypted and submitted
+- Timed reveal opening is permissionless. The local protocol 3 extension also
+  supports owner opening until a mandatory permissionless fallback; this does
+  not extend off-chain privacy beyond Drand publication. Envelopes are decrypted and submitted
   in separate bounded transactions. At least one UI or keeper must finish the
   cohort; there is no single atomic reveal-all call.
 - Temporary storage expires after the reveal window — seals are not kept forever by design.
@@ -61,3 +63,6 @@ Round receipts (`docs/RECEIPTS.md`) are **offline only** — the verifier checks
   must pin the reviewed contract ID, network, and WASM hash.
 - The legacy v1 mainnet round is protocol evidence, not a Core v2 production
   deployment.
+
+See [pilot gaps](PILOT_GAPS.md) and the [new release plan](REVEAL_POLICY.md) for
+remaining external integration and deployment work.

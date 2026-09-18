@@ -126,9 +126,9 @@ async function main() {
   }
 
   const now = Math.floor(Date.now() / 1000);
-  const revealRound = Math.ceil((now + 300 - DRAND_GENESIS) / DRAND_PERIOD);
+  const revealRound = Math.ceil((now + 300 - DRAND_GENESIS) / DRAND_PERIOD) + 1;
   const commitDeadline = now + 120;
-  const revealDeadline = DRAND_GENESIS + DRAND_PERIOD * revealRound + 180;
+  const revealDeadline = DRAND_GENESIS + DRAND_PERIOD * (revealRound - 1) + 180;
   const auditor = generateAuditorKeypair();
 
   console.log(`→ createRound id≈${nextRound} R=${revealRound}…`);

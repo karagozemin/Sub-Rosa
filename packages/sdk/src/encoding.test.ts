@@ -293,3 +293,16 @@ test("reveal_v2 carries the complete canonical payload envelope", () => {
   assert.equal(args.length, 3);
   assert.deepEqual(new Uint8Array(scValToNative(args[2])), envelope);
 });
+
+
+test("v3 creation encodes the immutable owner fallback in the real contract spec", () => {
+  const sdk = newClient();
+  const values = sdk.spec.funcArgsToScVals("create_round_v3", {
+    operator: addr(1), item_ref: Buffer.alloc(32), schema_ref: Buffer.alloc(32),
+    policy: { partner: { settlement: { mode: { tag: "ReceiptOnly", values: undefined }, payment_asset: undefined, lot_asset: undefined, lot_amount: 0n }, fixed_escrow: 0n, eligible_participants: [] }, reveal: { tag: "OwnerTriggered", values: [1500n] } },
+    reveal_round: 10n, clearing_rule: { tag: "HighestBid", values: undefined },
+    commit_deadline: 900n, reveal_deadline: 1800n, auditor_pubkey: Buffer.alloc(0), max_participants: 25,
+  });
+  assert.equal(values.length, 10);
+  assert.deepEqual(scValToNative(values[3]).reveal, ["OwnerTriggered", 1500n]);
+});

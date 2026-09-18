@@ -101,3 +101,16 @@ The web **Auditor** tab demonstrates:
 - Live bid tlock decrypt after R via quicknet
 
 This matches the selective-disclosure story: values public post-R, identities auditor-only.
+
+
+### Owner-triggered opening
+
+Protocol 3 optionally gates on-chain opening to the immutable operator until a
+mandatory fallback. Drand publication still enables off-chain decryption for
+anyone holding ciphertext, including that operator. Selective delay after seeing
+outcomes is possible until fallback. The contract requires at least 300 seconds
+between fallback and reveal deadline, verifies the BLS signature in both paths,
+and rejects missing reveal-policy storage rather than treating it as Timed.
+Opening after the deadline is rejected; permissionless void/refunds remain after
+grace. See [policy specification](REVEAL_POLICY.md). This source change is not an
+independent review or evidence of a new live deployment.

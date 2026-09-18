@@ -1,3 +1,4 @@
+import { drandRoundTime } from "@sub-rosa/tlock";
 // Permissionless reveal keeper.
 //
 // Once Drand round R is published, *anyone* can force a sealed round open and
@@ -24,11 +25,13 @@ import {
   type PayloadEnvelope,
 } from "@sub-rosa/tlock";
 
-import { readKeeperRound, type KeeperProtocolVersion } from "./protocol.js";
+import { readKeeperRevealState, readKeeperRound, type KeeperProtocolVersion } from "./protocol.js";
+import type { SettlementGuard } from "./settlement-guard.js";
 
 export type KeeperLogger = (msg: string) => void;
 
 export interface KeeperDeps {
+  settlementGuard?: SettlementGuard;
   /** Library calls default to legacy v1; CLI entry points explicitly select v2. */
   protocolVersion?: KeeperProtocolVersion;
   /** A funded signer. The keeper role is permissionless — any account works. */
@@ -103,6 +106,30 @@ export function errorMatches(e: unknown, names: string[]): boolean {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Check and reserve synchronously before awaiting the transaction, so concurrent
+ * passes sharing a guard cannot both dispatch settlement. */
+async function submitSettlement(
+  deps: KeeperDeps,
+  roundId: bigint,
+  submit: () => Promise<void>,
+): Promise<boolean> {
+  const guard = deps.settlementGuard;
+  const check = guard?.canSettle(roundId);
+  if (check && !check.allowed) {
+    deps.log?.(JSON.stringify(check.event));
+    return false;
+  }
+  guard?.markSubmitted(roundId);
+  try {
+    await submit();
+    guard?.markTerminal(roundId, "settled on-chain");
+    return true;
+  } catch (error) {
+    guard?.markRetryable(roundId, errorName(error));
+    throw error;
+  }
+}
+
 /** Wait until Drand round R should be published. Returns false if R is still in
  *  the future after `maxWaitSeconds`. */
 export async function waitForRound(
@@ -111,7 +138,7 @@ export async function waitForRound(
 ): Promise<boolean> {
   const { drand, log = () => {}, maxWaitSeconds = 0, pollMs = 3000 } = deps;
   const info = await drand.chain().info();
-  const publishAtMs = (info.genesis_time + info.period * round) * 1000;
+  const publishAtMs = drandRoundTime(round, info) * 1000;
   const giveUpAtMs = Date.now() + maxWaitSeconds * 1000;
 
   while (Date.now() < publishAtMs) {
@@ -272,6 +299,16 @@ export async function keepRoundV2(
   log(`round ${rid} v2: status=${round.status.tag} R=${round.reveal_round}`);
 
   if (round.status.tag === "Open") {
+    const state = await readKeeperRevealState(sdk, rid, round);
+    const now = Math.floor(Date.now() / 1000);
+    if (state && (now > Number(round.reveal_deadline) ||
+        (state.policy.tag === "OwnerTriggered" && now < Number(state.policy.values[0])))) {
+      log(now > Number(round.reveal_deadline)
+        ? `round ${rid}: reveal deadline passed; awaiting void grace`
+        : `round ${rid}: awaiting owner opening or fallback ${state.policy.tag === "OwnerTriggered" ? state.policy.values[0] : ""}`);
+      result.finalStatus = round.status.tag;
+      return result;
+    }
     const drandRound = Number(round.reveal_round);
     const available = await waitForRound(deps, drandRound);
     if (!available) {
@@ -433,9 +470,9 @@ export async function closeRound(
   // ── Phase D: settle a cleared round (real SAC transfers) ──────────────
   if (round.status.tag === "Cleared") {
     try {
-      await sdk.settle(rid);
-      result.settled = true;
-      log(`settled round ${rid}`);
+      result.settled = await submitSettlement(deps, rid, () => sdk.settle(rid));
+      if (result.settled) log(`settled round ${rid}`);
+      else result.skipped.push("settlement already submitted or terminal");
     } catch (e) {
       if (errorMatches(e, ["AlreadySettled", "NotCleared", "WrongStatus"])) {
         result.skipped.push(`settle skipped: ${errorName(e)}`);
@@ -507,9 +544,9 @@ export async function closeRoundV2(
 
   if (round.status.tag === "Cleared") {
     try {
-      await sdk.settleV2(rid);
-      result.settled = true;
-      log(`settled v2 auction ${rid}`);
+      result.settled = await submitSettlement(deps, rid, () => sdk.settleV2(rid));
+      if (result.settled) log(`settled v2 auction ${rid}`);
+      else result.skipped.push("settlement already submitted or terminal");
     } catch (error) {
       if (errorMatches(error, ["AlreadySettled", "NotCleared", "WrongStatus"])) {
         result.skipped.push(`settle_v2 skipped: ${errorName(error)}`);
@@ -664,5 +701,8 @@ export async function watchRound(
   }
 
   tick.finalStatus = round.status.tag;
+  if (round.status.tag === "Settled" || round.status.tag === "Voided") {
+    deps.settlementGuard?.markTerminal(rid, `${round.status.tag} on-chain`);
+  }
   return tick;
 }

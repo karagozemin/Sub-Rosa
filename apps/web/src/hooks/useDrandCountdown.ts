@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { quicknet } from "@sub-rosa/tlock";
+import { quicknet, drandRoundTime } from "@sub-rosa/tlock";
 
 const QUICKNET_GENESIS = 1_692_803_367;
 const QUICKNET_PERIOD = 3;
@@ -17,13 +17,13 @@ export interface DrandCountdown {
 }
 
 function timeOfRound(round: number): number {
-  return QUICKNET_GENESIS + QUICKNET_PERIOD * round;
+  return round > 0 ? drandRoundTime(round, { genesis_time: QUICKNET_GENESIS, period: QUICKNET_PERIOD }) : 0;
 }
 
 function localCountdown(targetRound: number): Omit<DrandCountdown, "loading" | "error"> {
   const now = Math.floor(Date.now() / 1000);
   const targetTime = timeOfRound(targetRound);
-  const currentRound = Math.floor((now - QUICKNET_GENESIS) / QUICKNET_PERIOD);
+  const currentRound = Math.floor((now - QUICKNET_GENESIS) / QUICKNET_PERIOD) + 1;
   const published = currentRound >= targetRound;
 
   return {
@@ -54,8 +54,8 @@ export function useDrandCountdown(targetRound: number, pollMs = 1000): DrandCoun
         const genesis = info.genesis_time;
         const period = info.period;
         const now = Math.floor(Date.now() / 1000);
-        const currentRound = Math.floor((now - genesis) / period);
-        const targetTime = genesis + period * targetRound;
+        const currentRound = Math.floor((now - genesis) / period) + 1;
+        const targetTime = targetRound > 0 ? drandRoundTime(targetRound, info) : 0;
         const published = currentRound >= targetRound;
         const secondsRemaining = published ? 0 : Math.max(0, targetTime - now);
 

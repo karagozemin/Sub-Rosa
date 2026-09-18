@@ -1,3 +1,4 @@
+import { drandRoundTime } from "@sub-rosa/tlock";
 import { Buffer } from "buffer";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -761,7 +762,7 @@ export function SignalPilotPage({ goHome }: { goHome: () => void }) {
       const commitSeconds = durationSeconds(durationPreset);
       const revealRound = await roundInSeconds(drand, commitSeconds + 15);
       const info = await drand.chain().info();
-      const revealAt = Number(info.genesis_time) + Number(info.period) * revealRound;
+      const revealAt = drandRoundTime(revealRound, info);
       const auditor = generateAuditorKeypair();
       const itemRef = await sha256Bytes(`${draft.title}:${draft.asset}:${Date.now()}`);
       const tx = await contract.create_partner_round_v2({

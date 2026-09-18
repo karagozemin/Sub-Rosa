@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { serializeReceipt, type RoundReceipt, type VerificationResult } from "@sub-rosa/sdk";
+import { serializeReceipt, serializeReceiptV2, type CoreV2Receipt, type RoundReceipt, type VerificationResult } from "@sub-rosa/sdk";
 
 export interface JsonIssue {
   code: string;
@@ -17,7 +17,7 @@ export interface JsonVerifyOutput {
 }
 
 export function buildJsonOutput(
-  receipt: RoundReceipt | null,
+  receipt: RoundReceipt | CoreV2Receipt | null,
   result: VerificationResult | null,
   parseError: string | null,
 ): JsonVerifyOutput {
@@ -34,7 +34,8 @@ export function buildJsonOutput(
     };
   }
 
-  const canonical = serializeReceipt(receipt);
+  const canonical = receipt.version === 2 || receipt.version === 3
+    ? serializeReceiptV2(receipt as CoreV2Receipt) : serializeReceipt(receipt as RoundReceipt);
   const rid = createHash("sha256").update(canonical, "utf-8").digest("hex");
 
   const errors: JsonIssue[] = result.issues

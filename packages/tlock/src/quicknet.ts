@@ -8,6 +8,7 @@ import {
 } from "drand-client";
 
 import { drandSignatureToSoroban } from "./bls.js";
+import { drandRoundTime } from "./freshness.js";
 
 export const QUICKNET_HASH =
   "52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971";
@@ -31,14 +32,17 @@ export async function currentRound(
   return drandRoundAt(unixMillis, info);
 }
 
-/// A round number that will be published roughly `seconds` from now — used to
+/// The first round scheduled at or after `seconds` from now — used to
 /// seal a bid until a moment in the near future.
 export async function roundInSeconds(
   client: DrandClient,
   seconds: number,
 ): Promise<number> {
+  if (!Number.isFinite(seconds) || seconds < 0) throw new Error("seconds must be non-negative and finite");
   const info = await client.chain().info();
-  return drandRoundAt(Date.now() + seconds * 1000, info);
+  const targetMs = Date.now() + seconds * 1000;
+  const round = drandRoundAt(targetMs, info);
+  return drandRoundTime(round, info) * 1000 < targetMs ? round + 1 : round;
 }
 
 /// The raw beacon (round, randomness, signature hex) for a specific round.

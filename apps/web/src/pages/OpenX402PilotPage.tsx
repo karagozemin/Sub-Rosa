@@ -1,3 +1,4 @@
+import { drandRoundTime } from "@sub-rosa/tlock";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getNetworkDetails, isConnected, requestAccess } from "@stellar/freighter-api";
 import {
@@ -305,7 +306,7 @@ export function OpenX402PilotPage({ goHome }: OpenX402PilotPageProps) {
         workspace.commitDurationSeconds + REVEAL_DELAY_SECONDS,
       );
       const info = await drand.chain().info();
-      const revealAt = Number(info.genesis_time) + Number(info.period) * revealRound;
+      const revealAt = drandRoundTime(revealRound, info);
       const auditor = generateAuditorKeypair();
       const itemRef = await sha256Bytes(`${DEFAULT_OPENX402_REQUEST.id}:${Date.now()}`);
       const params = {

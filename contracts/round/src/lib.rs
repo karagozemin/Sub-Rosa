@@ -38,6 +38,8 @@ const MAX_PAGE_SIZE: u32 = 100;
 const MAX_V2_PARTICIPANTS: u32 = 25;
 const MAX_ROUND_DURATION_SECS: u64 = 30 * 24 * 60 * 60;
 const CORE_V2_VERSION: u32 = 2;
+const REVEAL_POLICY_VERSION: u32 = 3;
+const MIN_REVEAL_WINDOW: u64 = 300;
 
 #[contract]
 pub struct SubRosaRound;
@@ -655,6 +657,55 @@ impl SubRosaRound {
         )
     }
 
+    /// Capability version. Existing v1/v2 creation APIs retain timed opening.
+    pub fn protocol_version(_env: Env) -> u32 {
+        REVEAL_POLICY_VERSION
+    }
+
+    /// Versioned creation with immutable opening policy. The operator is the
+    /// controller; a mandatory fallback leaves at least five minutes to reveal.
+    pub fn create_round_v3(
+        env: Env,
+        operator: Address,
+        item_ref: BytesN<32>,
+        schema_ref: BytesN<32>,
+        policy: RoundPolicyV3,
+        reveal_round: u64,
+        clearing_rule: ClearingRule,
+        commit_deadline: u64,
+        reveal_deadline: u64,
+        auditor_pubkey: Bytes,
+        max_participants: u32,
+    ) -> Result<u64, Error> {
+        let config = get_config(&env)?;
+        let privacy_at = drand::time_of_round(&config, reveal_round);
+        if let RevealPolicy::OwnerTriggered(fallback_at) = policy.reveal {
+            if fallback_at <= privacy_at ||
+                reveal_deadline.checked_sub(fallback_at).unwrap_or(0) < MIN_REVEAL_WINDOW {
+                return Err(Error::InvalidRevealPolicy);
+            }
+        }
+        let id = create_round_v2_impl(
+            &env, operator, item_ref, schema_ref, policy.partner.settlement.clone(),
+            reveal_round, clearing_rule, commit_deadline, reveal_deadline,
+            auditor_pubkey, max_participants, Some(policy.partner),
+        )?;
+        let mut round = get_round_v2(&env, id)?;
+        round.protocol_version = REVEAL_POLICY_VERSION;
+        set_round_v2(&env, id, &round);
+        set_reveal_state_v3(&env, id, &RevealStateV3 { policy: policy.reveal.clone(), opened_at: None });
+        env.events().publish((symbol_short!("policyv3"), id), policy.reveal);
+        Ok(id)
+    }
+
+    pub fn get_reveal_state_v3(env: Env, round_id: u64) -> Result<RevealStateV3, Error> {
+        let round = get_round_v2(&env, round_id)?;
+        if round.protocol_version != REVEAL_POLICY_VERSION {
+            return Err(Error::UnsupportedVersion);
+        }
+        get_reveal_state_v3(&env, round_id)
+    }
+
     /// Commit a full structured payload hash. Auction rounds require escrow;
     /// receipt-only rounds reject escrow and never touch the token contract.
     pub fn commit_v2(
@@ -669,7 +720,7 @@ impl SubRosaRound {
         bidder.require_auth();
         let _config = get_config(&env)?;
         let mut round = get_round_v2(&env, round_id)?;
-        if round.protocol_version != CORE_V2_VERSION {
+        if round.protocol_version != CORE_V2_VERSION && round.protocol_version != REVEAL_POLICY_VERSION {
             return Err(Error::UnsupportedVersion);
         }
         if round.status == Status::Voided {
@@ -787,10 +838,32 @@ impl SubRosaRound {
         if env.ledger().timestamp() <= round.commit_deadline {
             return Err(Error::CommitNotClosed);
         }
+        let now = env.ledger().timestamp();
+        let mut reveal_state = if round.protocol_version == REVEAL_POLICY_VERSION {
+            let state = get_reveal_state_v3(&env, round_id)?;
+            if now < drand::time_of_round(&config, round.reveal_round) {
+                return Err(Error::CommitNotClosed);
+            }
+            if now > round.reveal_deadline {
+                return Err(Error::RevealWindowClosed);
+            }
+            if let RevealPolicy::OwnerTriggered(fallback_at) = state.policy {
+                if now < fallback_at {
+                    round.operator.require_auth();
+                }
+            }
+            Some(state)
+        } else {
+            None
+        };
         if !drand::verify_round(&env, &config, round.reveal_round, &drand_signature) {
             return Err(Error::InvalidDrandSignature);
         }
 
+        if let Some(ref mut state) = reveal_state {
+            state.opened_at = Some(now);
+            set_reveal_state_v3(&env, round_id, state);
+        }
         round.status = Status::Revealing;
         extend_round_seals_v2(&env, round_id, &round.bidders, round.reveal_deadline);
         set_round_v2(&env, round_id, &round);

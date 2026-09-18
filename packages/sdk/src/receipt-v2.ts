@@ -20,8 +20,11 @@ export interface CoreV2SubmissionReceipt {
 }
 
 export interface CoreV2Receipt {
-  version: typeof CORE_V2_RECEIPT_VERSION;
-  protocolVersion: 2;
+  version: 2 | 3;
+  protocolVersion: 2 | 3;
+  /** Required in v3; absent in legacy v2 receipts. Not a proof of authorization. */
+  revealPolicy?: { type: "timed" } | { type: "owner-triggered"; controller: string; fallbackAt: string };
+  openedAt?: string | null;
   network: string;
   networkFingerprint: string;
   contractId: string;
@@ -99,8 +102,8 @@ export function verifyReceiptV2(receipt: CoreV2Receipt): VerificationResult {
     path?: string,
   ) => issues.push({ severity, code, message, ...(path ? { path } : {}) });
 
-  if (receipt.version !== CORE_V2_RECEIPT_VERSION || receipt.protocolVersion !== 2) {
-    add("error", "unsupported_version", "receipt and protocol versions must both be 2");
+  if (![2, 3].includes(receipt.version) || receipt.protocolVersion !== receipt.version) {
+    add("error", "unsupported_version", "receipt and protocol versions must match (2 or 3)");
     return { valid: false, issues, computedWinner: { address: null, value: null } };
   }
   if (!receipt.network || receipt.networkFingerprint !== networkFingerprint(receipt.network)) {
@@ -118,6 +121,38 @@ export function verifyReceiptV2(receipt: CoreV2Receipt): VerificationResult {
   }
   if (!Number.isInteger(receipt.maxParticipants) || receipt.maxParticipants < 1 || receipt.maxParticipants > 25) {
     add("error", "invalid_participant_cap", "maxParticipants must be between 1 and 25");
+  }
+
+  if (receipt.version === 3) {
+    if (receipt.policy?.enforced !== true) {
+      add("error", "missing_partner_policy", "v3 requires its contract-enforced partner policy");
+    }
+    const genesis = decimal(receipt.drandGenesis);
+    const period = decimal(receipt.drandPeriod);
+    const commit = decimal(receipt.commitDeadline);
+    const deadline = decimal(receipt.revealDeadline);
+    const privacy = genesis !== null && genesis >= 0n && period !== null && period > 0n && Number.isSafeInteger(receipt.revealRound) && receipt.revealRound > 0
+      ? genesis + period * (BigInt(receipt.revealRound) - 1n) : null;
+    if (privacy === null || commit === null || deadline === null || commit >= privacy || deadline <= privacy) {
+      add("error", "invalid_reveal_timing", "v3 requires commitDeadline < Drand time < revealDeadline");
+    }
+    const reveal = receipt.revealPolicy;
+    if (!reveal || (reveal.type !== "timed" && reveal.type !== "owner-triggered")) {
+      add("error", "invalid_reveal_policy", "v3 requires an explicit reveal policy");
+    } else if (reveal.type === "owner-triggered") {
+      const fallback = decimal(reveal.fallbackAt);
+      if (reveal.controller !== receipt.operator || fallback === null || privacy === null || deadline === null || fallback <= privacy || deadline - fallback < 300n) {
+        add("error", "invalid_reveal_policy", "controller must be operator; fallback must follow Drand time and leave 300 seconds to reveal");
+      }
+    }
+    const opened = decimal(receipt.openedAt);
+    if (receipt.status === "Open" || receipt.status === "Voided") {
+      if (receipt.openedAt !== null) add("error", "invalid_opened_at", "unopened/voided round must have null openedAt");
+    } else if (opened === null || privacy === null || deadline === null || opened < privacy || opened > deadline) {
+      add("error", "invalid_opened_at", "openedAt must lie within the Drand/reveal window");
+    }
+  } else if (receipt.revealPolicy !== undefined || receipt.openedAt !== undefined) {
+    add("error", "unexpected_reveal_policy", "v2 receipts cannot attest v3 opening policy");
   }
 
   const policy = receipt.policy;

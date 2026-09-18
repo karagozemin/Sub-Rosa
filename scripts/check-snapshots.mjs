@@ -32,6 +32,13 @@ const SNAPSHOT_DIR = resolve(
 // the snapshot directory. They are grouped by lifecycle phase for readability.
 // ---------------------------------------------------------------------------
 const REQUIRED_CATEGORIES = [
+  // Owner-triggered opening, fallback, refunds and legacy compatibility.
+  "v3_owner_auth_privacy_and_permissionless_fallback",
+  "v3_owner_open_requires_exact_owner_and_then_reveal_is_permissionless",
+  "v3_rejects_short_or_invalid_fallback_windows_for_both_modes",
+  "v3_missing_policy_fails_closed_and_late_open_can_be_voided",
+  "v3_auction_fallback_settlement_and_missing_owner_refunds",
+  "v3_timed_and_legacy_v2_remain_permissionless",
   // ── Create ──────────────────────────────────────────────────────────────
   "create_round_happy_path",
   "create_round_rejects_commit_after_reveal",

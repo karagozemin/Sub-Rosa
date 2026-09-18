@@ -1,3 +1,4 @@
+import { drandRoundTime } from "@sub-rosa/tlock";
 import { Buffer } from "buffer";
 import { useEffect, useState } from "react";
 import {
@@ -185,7 +186,7 @@ export function useRoundSession(active: UseCase) {
       const revealInSeconds = commitWindowSeconds + LIVE_COMMIT_CLOSE_BEFORE_REVEAL_SECONDS;
       const revealRound = await roundInSeconds(drand, revealInSeconds);
       const info = await drand.chain().info();
-      const tReveal = Number(info.genesis_time) + Number(info.period) * revealRound;
+      const tReveal = drandRoundTime(revealRound, info);
       const commitDeadline = tReveal - LIVE_COMMIT_CLOSE_BEFORE_REVEAL_SECONDS;
       const revealDeadline = tReveal + LIVE_REVEAL_WINDOW_AFTER_REVEAL_SECONDS;
       const auditor = generateAuditorKeypair();

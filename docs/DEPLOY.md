@@ -249,3 +249,26 @@ names for historical evidence; they are not the Core v2 launch path.
 - **Never** commit `.env` with secrets (already in `.gitignore`).
 - **Never** put `S…` secret keys in `VITE_*` — they end up in public JS.
 - Rotate any key that was pasted in chat or logs.
+
+## Owner-Triggered Reveal (protocol 3 — testnet)
+
+The versioned opening policy and corrected Drand timing are implemented and
+deployed to a **separate testnet contract** with live value-moving proofs
+recorded (2026-09-18). Existing SDK/UI deployment **defaults remain unchanged**:
+they keep resolving to the reviewed Core v2 contract, and the v3 testnet contract
+is reached only via an explicit contract ID. Mainnet deployment and default
+promotion remain pending an independent funds-handling review.
+
+Testnet v3 contract (non-default; opt in explicitly):
+
+```bash
+VITE_STELLAR_NETWORK=testnet
+VITE_RPC_URL=https://soroban-testnet.stellar.org
+VITE_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
+VITE_CONTRACT_ID=CB7VIYY4RQLZG2Y6HLDWB3UKSVOAIDYFZ5TGW5AUBCIPJHTCZV4ZWQFF
+```
+
+On-chain WASM hash matches `7a72a82c…b194` and `protocol_version()` advertises
+capability 3. Evidence: `artifacts/reveal-policy-v3/testnet/deployment.json` and
+`lifecycle.json`. See [reveal policy and rollout plan](REVEAL_POLICY.md) for
+authorization, fallback, receipt compatibility and the remaining rollout steps.

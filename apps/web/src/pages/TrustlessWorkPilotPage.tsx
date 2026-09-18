@@ -1,3 +1,4 @@
+import { drandRoundTime } from "@sub-rosa/tlock";
 import { Buffer } from "buffer";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -1444,7 +1445,7 @@ export function TrustlessWorkPilotPage({ goHome }: { goHome: () => void }) {
       const commitSeconds = deadlineSeconds(project.deadlinePreset);
       const revealRound = await roundInSeconds(drand, commitSeconds + 15);
       const info = await drand.chain().info();
-      const revealAt = Number(info.genesis_time) + Number(info.period) * revealRound;
+      const revealAt = drandRoundTime(revealRound, info);
       const auditor = generateAuditorKeypair();
       const itemRef = await sha256Bytes(`${project.title}:${address}:${nowMs()}`);
       const sent = await signAndSendWithSequenceRetry(() => contract.create_round_v2({

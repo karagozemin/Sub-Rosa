@@ -2,7 +2,7 @@ use soroban_sdk::{Address, Env, Vec};
 
 use crate::types::{
     BidState, DataKey, Error, GlobalConfig, Round, RoundPolicyV2, RoundV2, Seal,
-    SubmissionStateV2,
+    SubmissionStateV2, RevealStateV3,
 };
 
 // TTL policy. Ledger close time on Stellar is ~5s, so these are generous for a
@@ -249,4 +249,18 @@ pub fn extend_round_seals(env: &Env, round_id: u64, bidders: &Vec<Address>, reve
             extend_seal_ttl(env, &key, reveal_deadline);
         }
     }
+}
+
+// A v3 round never infers Timed from a missing/archived policy entry.
+pub fn get_reveal_state_v3(env: &Env, round_id: u64) -> Result<RevealStateV3, Error> {
+    let key = DataKey::RevealV3(round_id);
+    let state = env.storage().persistent().get(&key).ok_or(Error::RevealPolicyMissing)?;
+    env.storage().persistent().extend_ttl(&key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
+    Ok(state)
+}
+
+pub fn set_reveal_state_v3(env: &Env, round_id: u64, state: &RevealStateV3) {
+    let key = DataKey::RevealV3(round_id);
+    env.storage().persistent().set(&key, state);
+    env.storage().persistent().extend_ttl(&key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
 }

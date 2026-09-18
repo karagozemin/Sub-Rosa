@@ -1,3 +1,4 @@
+import { drandRoundTime } from "@sub-rosa/tlock";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -218,8 +219,8 @@ async function main() {
   const drand = quicknet();
   const chain = await drand.chain().info();
   const now = Math.floor(Date.now() / 1000);
-  const revealRound = Math.ceil((now + 300 - Number(chain.genesis_time)) / Number(chain.period));
-  const revealAt = Number(chain.genesis_time) + Number(chain.period) * revealRound;
+  const revealRound = Math.ceil((now + 300 - Number(chain.genesis_time)) / Number(chain.period)) + 1;
+  const revealAt = drandRoundTime(revealRound, chain);
   const commitDeadline = revealAt - 60;
   const revealDeadline = revealAt + 240;
   const fixedEscrow = 25n * UNIT;

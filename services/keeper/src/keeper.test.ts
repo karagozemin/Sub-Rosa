@@ -64,6 +64,13 @@ test("waitForRound returns true immediately for an already-published round", asy
   assert.equal(ok, true);
 });
 
+test("waitForRound becomes ready exactly at the first beacon's genesis", async (t) => {
+  t.mock.method(Date, "now", () => 1000_000);
+  const deps = { sdk: {} as never, drand: { chain: () => ({ info: async () => ({ genesis_time: 1000, period: 3 }) }) } as never };
+  assert.equal(await waitForRound(deps, 1), true);
+  assert.equal(await waitForRound(deps, 2), false);
+});
+
 test("keepRoundV2 opens and reveals complete structured payloads", async () => {
   const envelope = {
     amount: 700n,
@@ -112,7 +119,10 @@ test("keepRoundV2 opens and reveals complete structured payloads", async () => {
   assert.equal(new TextDecoder().decode(revealed[0]?.payload), "proposal body");
 });
 
-test("keepRoundV2 opens with a verified frozen Drand beacon using only v2 methods", async () => {
+for (const version of [2, 3]) {
+test(`keepRoundV2 opens v${version} at its permissionless boundary with a verified frozen Drand beacon`, async (t) => {
+  const now = 1692803367 + 3 * (29_155_653 - 1) + 60;
+  t.mock.method(Date, "now", () => now * 1000);
   // Same real quicknet vector as the Soroban contract's BLS tests.
   const R = 29_155_653;
   const signature = "0f74ee9ea1bc8ab52cc375ec82e70b6fed483a2618e90eeaef5631555733554f8bb3ec7c8563341af525d09b3702cae7181d281dbcb68e4779e93184eea8f879301f980708c26e488b5417f9c257b6b9cee7f9a2d6981fb65b7bcd6bcc15d3ac";
@@ -128,7 +138,8 @@ test("keepRoundV2 opens with a verified frozen Drand beacon using only v2 method
   const result = await keepRoundV2({
     drand: drand as never,
     sdk: {
-      getRoundV2: async () => ({ status: { tag: status }, reveal_round: BigInt(R) }),
+      getRoundV2: async () => ({ protocol_version: version, status: { tag: status }, reveal_round: BigInt(R), reveal_deadline: BigInt(now + 300) }),
+      getRevealStateV3: async () => ({ policy: { tag: "OwnerTriggered", values: [BigInt(now)] } }),
       openRevealV2: async (id: bigint, sig: Uint8Array) => {
         assert.equal(id, 7n);
         assert.equal(Buffer.from(sig).toString("hex"), signature);
@@ -140,6 +151,8 @@ test("keepRoundV2 opens with a verified frozen Drand beacon using only v2 method
   assert.equal(result.openedReveal, true);
   assert.equal(result.finalStatus, "Revealing");
 });
+
+}
 
 test("closeRoundV2 finalizes ReceiptOnly without calling settlement", async () => {
   let status = "Revealing";

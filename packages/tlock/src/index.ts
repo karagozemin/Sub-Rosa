@@ -43,6 +43,7 @@ export {
 
 export {
   classifyDrandRound,
+  drandRoundTime,
   DEFAULT_STALE_THRESHOLD_MS,
   type DrandRoundInfo,
   type FreshnessStatus,

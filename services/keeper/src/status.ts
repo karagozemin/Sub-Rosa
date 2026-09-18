@@ -1,9 +1,11 @@
+import { drandRoundTime } from "@sub-rosa/tlock";
 import { fetchRoundSignature, type DrandClient } from "@sub-rosa/tlock";
 
 import { decideKeeperDryRunAction, type KeeperDryRunPhase } from "./dry-run.js";
 import {
   countKeeperRevealed,
   readKeeperRound,
+  readKeeperRevealState,
   type KeeperProtocolVersion,
   type KeeperReader,
 } from "./protocol.js";
@@ -132,24 +134,27 @@ export async function buildRoundStatus(
   const revealedCount = await countKeeperRevealed(reader, roundId, bidders, args.protocolVersion ?? 1);
 
   const info = await drand.chain().info();
-  const publishAtS = info.genesis_time + info.period * revealRound;
+  const publishAtS = drandRoundTime(revealRound, info);
 
   const commitClosed = nowSeconds > commitDeadline;
   const revealWindowOpen =
     status === "Revealing" && nowSeconds <= revealDeadline;
   const voidableAfter = revealDeadline + VOID_GRACE_SECONDS;
 
+  const revealState = status === "Open" ? await readKeeperRevealState(reader, roundId, round) : undefined;
   const phase = decideKeeperDryRunAction(
     { status: round.status, reveal_deadline: round.reveal_deadline },
     bidders.length,
     revealedCount,
     nowSeconds,
+    revealState,
   );
 
   // R is the publisher clock: the keeper's signature-building step can only
   // happen once the Drand chain has reached R. We treat `now >= publishAtS`
   // as signal that R's signature is fetchable; an API replica may briefly lag.
-  const revealReady = status === "Open" && nowSeconds >= publishAtS;
+  const revealReady = status === "Open" && commitClosed && nowSeconds >= publishAtS && nowSeconds <= revealDeadline &&
+    !(revealState?.policy.tag === "OwnerTriggered" && nowSeconds < Number(revealState.policy.values[0]));
 
   let settlementIndicator = settlement;
   if (status === "Settled" || status === "Voided") {

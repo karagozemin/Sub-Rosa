@@ -308,6 +308,22 @@ workflow. It has not received an independent funds-handling audit. Use explicit
 value and participant limits, monitored keepers, and a reviewed contract/hash
 before any production or uncapped integration.
 
+### Owner-Triggered Reveal (protocol 3) testnet
+
+| Field | Value |
+| --- | --- |
+| Contract | [`CB7VIYY4RQLZG2Y6HLDWB3UKSVOAIDYFZ5TGW5AUBCIPJHTCZV4ZWQFF`](https://stellar.expert/explorer/testnet/contract/CB7VIYY4RQLZG2Y6HLDWB3UKSVOAIDYFZ5TGW5AUBCIPJHTCZV4ZWQFF) |
+| WASM hash | `7a72a82c2678eccaa2f6f3727d4d972640cbabc54f04124c6fc8b68bf150b194` |
+| Capability | `protocol_version()` advertises 3 (owner-triggered reveal) |
+| Owner-open proof | Operator opened under `require_auth`; a non-operator was rejected before fallback; two bids revealed and settled with the losing escrow fully refunded |
+| Fallback proof | Operator never opened; after `fallbackAt` a non-operator (keeper) opened permissionlessly and the sole bid settled |
+| Conservation | Seller `+40`/`−2 lot`, winner `−40`/`+2 lot`, loser `0`/`0`; both receipts verified as version 3 |
+
+This is a **non-default** deployment: the SDK/UI defaults still resolve to the
+reviewed Core v2 contract, and this contract is reached only via an explicit
+contract ID. Evidence: `artifacts/reveal-policy-v3/testnet/deployment.json` and
+`lifecycle.json`. Mainnet and independent review remain pending.
+
 ### Historical mainnet proof
 
 | Field | Value |
@@ -388,3 +404,12 @@ commit secret keys, recovery phrases, or local deployment artifacts.
 | [docs/DEPLOY.md](./docs/DEPLOY.md) | Runtime configuration and secret handling |
 | [docs/LIMITATIONS.md](./docs/LIMITATIONS.md) | Current network and production boundaries |
 | [docs/CI.md](./docs/CI.md) | Continuous-integration checks |
+
+## Owner-Triggered Reveal (protocol 3)
+
+The versioned opening policy and corrected Drand timing are implemented and
+deployed to a separate testnet contract with live value-moving proofs recorded
+(see [Verified artifacts](#verified-artifacts) above). Existing SDK/UI deployment
+defaults remain unchanged and mainnet deployment is still pending independent
+review. See [reveal policy and rollout plan](docs/REVEAL_POLICY.md) for
+authorization, fallback, receipt compatibility and the remaining rollout steps.

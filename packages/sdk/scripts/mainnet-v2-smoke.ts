@@ -1,3 +1,4 @@
+import { drandRoundTime } from "@sub-rosa/tlock";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { randomBytes } from "node:crypto";
@@ -174,9 +175,9 @@ async function main() {
   const now = Math.floor(Date.now() / 1000);
   const revealRound = Math.ceil(
     (now + 60 - Number(chain.genesis_time)) / Number(chain.period),
-  );
+  ) + 1;
   const revealAt =
-    Number(chain.genesis_time) + Number(chain.period) * revealRound;
+    drandRoundTime(revealRound, chain);
   const revealDeadline = revealAt + 60;
   const auditor = generateAuditorKeypair();
   const nativeSac = nativeXlmSacId(networkPassphrase);

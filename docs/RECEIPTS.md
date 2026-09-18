@@ -113,7 +113,7 @@ The receipt's trust depends on the **exporter** being honest about the on-chain 
 
 ```bash
 # Requires: RPC_URL, NETWORK_PASSPHRASE, CONTRACT_ID in environment
-pnpm --filter @sub-rosa/receipt-cli receipt export 1
+RECEIPT_PROTOCOL_VERSION=1 pnpm --filter @sub-rosa/receipt-cli receipt export 1
 ```
 
 ### Verify offline
@@ -212,3 +212,9 @@ Run fixture tests:
 ```bash
 pnpm --filter @sub-rosa/receipt-cli test
 ```
+
+## Owner-Triggered Reveal (local release)
+
+The versioned opening policy and corrected Drand timing are implemented locally;
+existing deployment defaults remain unchanged. See [reveal policy and rollout plan](REVEAL_POLICY.md)
+for authorization, fallback, receipt compatibility and separate deployment steps.

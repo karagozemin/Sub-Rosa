@@ -177,8 +177,8 @@ async function testnetMain() {
   console.log("contract:", contractId);
 
   const now = Math.floor(Date.now() / 1000);
-  const revealRound = Math.ceil((now + 135 - DRAND_GENESIS) / DRAND_PERIOD);
-  const tReveal = DRAND_GENESIS + DRAND_PERIOD * revealRound;
+  const revealRound = Math.ceil((now + 135 - DRAND_GENESIS) / DRAND_PERIOD) + 1;
+  const tReveal = DRAND_GENESIS + DRAND_PERIOD * (revealRound - 1);
   const commitDeadline = now + 75;
   const revealDeadline = tReveal + 120;
   const auditor = generateAuditorKeypair();

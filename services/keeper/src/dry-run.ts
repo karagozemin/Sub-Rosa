@@ -1,9 +1,10 @@
-import type { Round } from "@sub-rosa/sdk";
+import type { Round, RevealStateV3 } from "@sub-rosa/sdk";
 
 import { VOID_GRACE_SECONDS } from "./keeper.js";
 import { parseKeeperNetworkConfig } from "./network-config.js";
 import {
   countKeeperRevealed,
+  readKeeperRevealState,
   readKeeperRound,
   parseKeeperProtocolVersion,
   type KeeperProtocolVersion,
@@ -23,6 +24,8 @@ export interface KeeperRunConfig {
 
 export type KeeperDryRunPhase =
   | "awaiting-drand"
+  | "awaiting-owner"
+  | "awaiting-void"
   | "stale-open"
   | "revealing"
   | "awaiting-clear"
@@ -108,10 +111,19 @@ export function decideKeeperDryRunAction(
   bidderCount: number,
   revealedCount: number | null,
   nowSeconds = Math.floor(Date.now() / 1000),
+  revealState?: RevealStateV3,
 ): KeeperDryRunDecision {
   switch (round.status.tag) {
     case "Open": {
       const voidAfter = Number(round.reveal_deadline) + VOID_GRACE_SECONDS;
+      if (revealState && nowSeconds <= voidAfter) {
+        if (nowSeconds > Number(round.reveal_deadline)) {
+          return { currentPhase: "awaiting-void", nextAction: `void after grace ${voidAfter}` };
+        }
+        if (revealState.policy.tag === "OwnerTriggered" && nowSeconds < Number(revealState.policy.values[0])) {
+          return { currentPhase: "awaiting-owner", nextAction: `owner may open after Drand publication; permissionless fallback at ${revealState.policy.values[0]}` };
+        }
+      }
       return nowSeconds > voidAfter
         ? { currentPhase: "stale-open", nextAction: "void stale round" }
         : {
@@ -171,6 +183,7 @@ export async function buildKeeperDryRunSummary(
     bidderCount,
     revealedCount,
     nowSeconds,
+    round.status.tag === "Open" ? await readKeeperRevealState(reader, rid, round) : undefined,
   );
 
   return {

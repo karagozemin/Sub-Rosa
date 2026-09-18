@@ -1,8 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { QUICKNET_HASH } from "./quicknet.js";
-import { classifyDrandRound } from "./freshness.js";
+import { QUICKNET_HASH, roundInSeconds } from "./quicknet.js";
+import { classifyDrandRound, drandRoundTime } from "./freshness.js";
+import { roundTime } from "drand-client";
 
 const QUICKNET_FIXTURE = {
   public_key:
@@ -16,6 +17,38 @@ const QUICKNET_FIXTURE = {
     beaconID: "quicknet",
   },
 };
+
+test("round timing agrees with the upstream 1-based schedule, including genesis", () => {
+  assert.equal(drandRoundTime(1, QUICKNET_FIXTURE), 1692803367);
+  for (const round of [1, 2, 10, 29_155_653]) {
+    const expected = roundTime(QUICKNET_FIXTURE, round);
+    assert.equal(drandRoundTime(round, QUICKNET_FIXTURE) * 1000, expected);
+    assert.equal(classifyDrandRound(round, QUICKNET_FIXTURE, expected - 1).status, "future");
+    assert.equal(classifyDrandRound(round, QUICKNET_FIXTURE, expected).status, "fresh");
+  }
+});
+
+test("roundInSeconds never selects a round before the requested privacy boundary", async (t) => {
+  const genesisMs = QUICKNET_FIXTURE.genesis_time * 1000;
+  t.mock.method(Date, "now", () => genesisMs);
+  const client = { chain: () => ({ info: async () => QUICKNET_FIXTURE }) } as never;
+  assert.equal(await roundInSeconds(client, 0), 1);
+  assert.equal(await roundInSeconds(client, 3), 2);
+  assert.equal(await roundInSeconds(client, 3.001), 3);
+  assert.equal(await roundInSeconds(client, 2.999), 2);
+  await assert.rejects(roundInSeconds(client, -1), /seconds/);
+  await assert.rejects(roundInSeconds(client, NaN), /seconds/);
+});
+
+test("invalid or overflowing schedule data cannot report a fresh round", () => {
+  for (const round of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => drandRoundTime(round, QUICKNET_FIXTURE));
+  }
+  for (const period of [0, -1, Infinity, NaN, 0.5]) {
+    assert.equal(classifyDrandRound(1, { genesis_time: 1000, period }, 1000000).status, "unknown");
+  }
+  assert.throws(() => drandRoundTime(Number.MAX_SAFE_INTEGER, QUICKNET_FIXTURE), /safe integer/);
+});
 
 test("QUICKNET_HASH matches the frozen quicknet fixture", () => {
   assert.equal(QUICKNET_HASH, QUICKNET_FIXTURE.hash);
@@ -76,7 +109,7 @@ test("quicknet genesis_time is in a reasonable range", () => {
 test("freshness helper uses fixture fields to compute round timing", () => {
   const { genesis_time, period } = QUICKNET_FIXTURE;
   const round = 10_000_000;
-  const publishAtS = genesis_time + period * round;
+  const publishAtS = genesis_time + period * (round - 1);
   const publishAtMs = publishAtS * 1000;
 
   const before = classifyDrandRound(round, { genesis_time, period }, publishAtMs - 1);

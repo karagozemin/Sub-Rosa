@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RoundV2, SubmissionStateV2, SubRosaClient } from "@sub-rosa/sdk";
 import { buildKeeperDryRunSummary, parseKeeperRunConfig } from "./dry-run.js";
-import { discoverRoundIds, watchRound } from "./keeper.js";
+import { discoverRoundIds, watchRound, keepRoundV2 } from "./keeper.js";
 import { buildRoundStatus } from "./status.js";
 import { parseKeeperProtocolVersion } from "./protocol.js";
 import { runWatchLoop } from "./watch-loop.js";
@@ -113,7 +113,8 @@ test("dry-run and status count v2 proposal envelopes even when amount is absent"
   assert.deepEqual(calls, []);
 });
 
-test("real watch loop persists v2 completion discovered after a missing ID", async (t) => {
+for (const alreadySubmitted of [false, true]) {
+test(`real watch loop ${alreadySubmitted ? "blocks duplicate settlement" : "persists v2 completion"} after discovery`, async (t) => {
   const dir = mkdtempSync(join(tmpdir(), "sub-rosa-v2-watch-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   const envNames = ["WATCH_FROM", "WATCH_MAX_ROUNDS", "WATCH_ROUND_IDS", "ROUND_ID"];
@@ -132,6 +133,7 @@ test("real watch loop persists v2 completion discovered after a missing ID", asy
   };
   const store = new KeeperStore(join(dir, "store.json"));
   const settlementGuard = createSettlementGuard();
+  if (alreadySubmitted) settlementGuard.markSubmitted(2n);
   let stopping = false;
   await runWatchLoop({
     sdk: sdk as unknown as SubRosaClient, drand, protocolVersion: 2,
@@ -139,7 +141,74 @@ test("real watch loop persists v2 completion discovered after a missing ID", asy
     pollMs: 0, contractId: "contract", network: "test", store, settlementGuard,
     isStopping: () => stopping,
   });
-  assert.deepEqual(calls, ["clearV2", "settleV2"]);
-  assert.equal(store.getRound(2n)?.lastStatus, "Settled");
-  assert.equal(settlementGuard.getEntry(2n)?.status, "terminal");
+  assert.deepEqual(calls, alreadySubmitted ? ["clearV2"] : ["clearV2", "settleV2"]);
+  assert.equal(store.getRound(2n)?.lastStatus, alreadySubmitted ? "Cleared" : "Settled");
+  assert.equal(settlementGuard.getEntry(2n)?.status, alreadySubmitted ? "submitted" : "terminal");
+});
+}
+
+for (const protocolVersion of [1, 2] as const) {
+  test(`v${protocolVersion} concurrent passes share a settlement reservation and reconcile completion`, async () => {
+    const { sdk, round, drand } = fixture("Auction", "Cleared");
+    let attempts = 0;
+    let finish!: () => void;
+    let started!: () => void;
+    const pending = new Promise<void>((resolve) => { finish = resolve; });
+    const dispatched = new Promise<void>((resolve) => { started = resolve; });
+    const settle = async () => {
+      attempts++;
+      started();
+      await pending;
+      round.status.tag = "Settled";
+    };
+    const deps = {
+      sdk: { ...sdk, getRound: async () => round, settle, settleV2: settle } as unknown as SubRosaClient,
+      drand, protocolVersion, settlementGuard: createSettlementGuard(),
+    };
+    const first = watchRound(deps, 2n);
+    await dispatched;
+    const second = await watchRound(deps, 2n);
+    assert.equal(attempts, 1);
+    assert.equal(second.close?.settled, false);
+    assert.match(second.close!.skipped.join(), /already submitted/);
+    assert.equal(deps.settlementGuard.getEntry(2n)?.status, "submitted");
+    finish();
+    assert.equal((await first).finalStatus, "Settled");
+    assert.equal(deps.settlementGuard.getEntry(2n)?.status, "terminal");
+  });
+}
+
+test("failed settlement releases its reservation and a later tick can retry", async () => {
+  const { sdk, round, drand } = fixture("Auction", "Cleared");
+  let attempts = 0;
+  sdk.settleV2 = async () => {
+    if (++attempts === 1) throw new Error("RPC unavailable");
+    round.status.tag = "Settled";
+  };
+  const deps = { sdk: sdk as unknown as SubRosaClient, drand, protocolVersion: 2 as const, settlementGuard: createSettlementGuard() };
+  await assert.rejects(watchRound(deps, 2n), /RPC unavailable/);
+  assert.equal(deps.settlementGuard.getEntry(2n)?.status, "pending");
+  assert.equal((await watchRound(deps, 2n)).finalStatus, "Settled");
+  assert.equal(attempts, 2);
+});
+
+
+test("v3 keeper, dry-run and status wait for owner; fallback resumes permissionless opening", async (t) => {
+  t.mock.method(Date, "now", () => 999_000);
+  const { sdk, round, calls, drand } = fixture("ReceiptOnly", "Open");
+  round.protocol_version = 3;
+  round.reveal_deadline = 1300n;
+  const reader = { ...sdk, getRevealStateV3: async () => ({ policy: { tag: "OwnerTriggered" as const, values: [1000n] as const }, opened_at: undefined }) };
+  const kept = await keepRoundV2({ sdk: reader as unknown as SubRosaClient, drand: {} as never }, 1n);
+  assert.equal(kept.openedReveal, false);
+  assert.deepEqual(calls, []);
+  const before = await buildKeeperDryRunSummary(reader, 1n, 999, 2);
+  assert.equal(before.currentPhase, "awaiting-owner");
+  const after = await buildKeeperDryRunSummary(reader, 1n, 1000, 2);
+  assert.equal(after.currentPhase, "awaiting-drand");
+  assert.equal((await buildRoundStatus({ reader, drand, roundId: 1n, protocolVersion: 2, nowSeconds: 999 })).revealReady, false);
+  assert.equal((await buildRoundStatus({ reader, drand, roundId: 1n, protocolVersion: 2, nowSeconds: 1000 })).revealReady, true);
+  assert.equal((await buildKeeperDryRunSummary(reader, 1n, 1301, 2)).currentPhase, "awaiting-void");
+  reader.getRevealStateV3 = async () => { throw new Error("RevealPolicyMissing"); };
+  await assert.rejects(keepRoundV2({ sdk: reader as unknown as SubRosaClient, drand }, 1n), /RevealPolicyMissing/);
 });

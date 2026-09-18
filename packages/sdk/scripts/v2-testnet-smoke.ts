@@ -1,3 +1,4 @@
+import { drandRoundTime } from "@sub-rosa/tlock";
 import { createHash } from "node:crypto";
 
 import { Keypair } from "@stellar/stellar-sdk";
@@ -62,8 +63,8 @@ async function main() {
   const drand = quicknet();
   const chain = await drand.chain().info();
   const now = Math.floor(Date.now() / 1000);
-  const revealRound = Math.ceil((now + 30 - Number(chain.genesis_time)) / Number(chain.period));
-  const revealAt = Number(chain.genesis_time) + Number(chain.period) * revealRound;
+  const revealRound = Math.ceil((now + 30 - Number(chain.genesis_time)) / Number(chain.period)) + 1;
+  const revealAt = drandRoundTime(revealRound, chain);
   const commitDeadline = now + 15;
   // Soroban testnet ledgers close roughly every five seconds. Leave enough
   // room for open_reveal, seal read/decrypt, and reveal to land separately.

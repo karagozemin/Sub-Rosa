@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { DEMO_TRACE } from "../demo/trace";
 import { USE_CASES, type UseCaseId } from "../config/useCases";
-import { LOGO_SRC } from "../lib/chain";
+import { LOGO_SRC } from "../config/brand";
 import { shortAddr } from "../lib/format";
 
 const fadeUp = {

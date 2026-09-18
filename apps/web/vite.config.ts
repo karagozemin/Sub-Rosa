@@ -6,6 +6,7 @@ import { defineConfig } from "vite";
 const require = createRequire(import.meta.url);
 
 export default defineConfig({
+  build: { manifest: true },
   plugins: [
     react(),
     {

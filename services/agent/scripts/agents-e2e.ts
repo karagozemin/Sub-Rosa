@@ -217,8 +217,8 @@ async function main() {
 
   const itemRefStr = "sub-rosa://agents/spectrum-block-9";
   const now = Math.floor(Date.now() / 1000);
-  const revealRound = Math.ceil((now + 180 - DRAND_GENESIS) / DRAND_PERIOD);
-  const tReveal = DRAND_GENESIS + DRAND_PERIOD * revealRound;
+  const revealRound = Math.ceil((now + 180 - DRAND_GENESIS) / DRAND_PERIOD) + 1;
+  const tReveal = DRAND_GENESIS + DRAND_PERIOD * (revealRound - 1);
   const commitDeadline = now + 90;
   const revealDeadline = tReveal + 180;
   const auditor = generateAuditorKeypair();

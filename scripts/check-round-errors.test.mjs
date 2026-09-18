@@ -45,7 +45,7 @@ describe("parseTypesRs", () => {
       "utf-8",
     );
     const variants = parseTypesRs(content);
-    assert.equal(variants.length, 33);
+    assert.equal(variants.length, 35);
     assert.deepEqual(
       variants.find((v) => v.name === "CommitClosed"),
       { name: "CommitClosed", code: 10 },
@@ -60,7 +60,7 @@ describe("parseErrorsMd", () => {
       "utf-8",
     );
     const variants = parseErrorsMd(content);
-    assert.equal(variants.length, 33);
+    assert.equal(variants.length, 35);
     assert.deepEqual(
       variants.find((v) => v.name === "InvalidLimit"),
       { name: "InvalidLimit", code: 39 },
@@ -72,8 +72,8 @@ describe("check-round-errors script", () => {
   it("passes against the real repo sources", () => {
     const result = runScript();
     assert.match(result, /PASS\s+types\.rs and ERRORS\.md list the same error codes\./);
-    assert.match(result, /types\.rs : 33 variants/);
-    assert.match(result, /ERRORS\.md: 33 rows/);
+    assert.match(result, /types\.rs : 35 variants/);
+    assert.match(result, /ERRORS\.md: 35 rows/);
   });
 
   it("fails when ERRORS.md is missing a variant", () => {

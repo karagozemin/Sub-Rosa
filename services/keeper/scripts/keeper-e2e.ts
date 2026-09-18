@@ -87,8 +87,8 @@ async function main() {
   const operator = new SubRosaClient({ rpcUrl: RPC_URL, networkPassphrase: NETWORK, contractId, secretKey: operatorSecret });
   const now = Math.floor(Date.now() / 1000);
   const commitDeadline = now + 90;
-  const revealRound = Math.ceil((now + 150 - DRAND_GENESIS) / DRAND_PERIOD);
-  const tReveal = DRAND_GENESIS + DRAND_PERIOD * revealRound;
+  const revealRound = Math.ceil((now + 150 - DRAND_GENESIS) / DRAND_PERIOD) + 1;
+  const tReveal = DRAND_GENESIS + DRAND_PERIOD * (revealRound - 1);
   const revealDeadline = tReveal + 600;
   const auditor = generateAuditorKeypair();
 

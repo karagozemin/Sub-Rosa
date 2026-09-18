@@ -9,6 +9,7 @@ import { SubRosaPreflightError } from "./errors.js";
 export type PreflightOperation =
   | "create_round"
   | "create_round_v2"
+  | "create_round_v3"
   | "create_partner_round_v2"
   | "commit"
   | "commit_v2"

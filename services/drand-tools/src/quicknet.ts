@@ -38,5 +38,5 @@ export function roundAt(info: ChainInfo, unixSeconds: number): number {
 }
 
 export function timeOfRound(info: ChainInfo, round: number): number {
-  return info.genesis_time + info.period * round;
+  return info.genesis_time + info.period * (round - 1);
 }

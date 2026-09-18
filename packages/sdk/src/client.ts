@@ -22,6 +22,8 @@ import {
   type Round,
   type RoundMode,
   type RoundPolicyV2,
+  type RevealPolicy,
+  type RevealStateV3,
   type RoundV2,
   type Seal,
   type SettlementConfig,
@@ -179,6 +181,11 @@ export interface CreatePartnerRoundV2Params extends CreateRoundV2Params {
   eligibleParticipants?: string[];
 }
 
+export interface CreateRoundV3Params extends CreatePartnerRoundV2Params {
+  /** Controls on-chain opening only. Controller is the immutable round operator. */
+  revealPolicy: { type: "timed" } | { type: "owner-triggered"; fallbackAt: number | bigint };
+}
+
 export interface CommitV2Params {
   roundId: number | bigint;
   /** Structured seal produced by @sub-rosa/tlock `sealPayload`. */
@@ -292,6 +299,27 @@ function partnerV2RoundArgs(
     eligible_participants: eligibleParticipants,
   };
   return { ...round, policy };
+}
+
+function v3RoundArgs(params: CreateRoundV3Params, operator: string) {
+  const { policy: partner, ...round } = partnerV2RoundArgs(params, operator);
+  let reveal: RevealPolicy;
+  if (params.revealPolicy.type === "timed") {
+    reveal = { tag: "Timed", values: undefined };
+  } else if (params.revealPolicy.type === "owner-triggered") {
+    const value = params.revealPolicy.fallbackAt;
+    if (typeof value === "number" && !Number.isSafeInteger(value)) {
+      throw new SubRosaClientConfigError("fallbackAt must be a safe integer Unix timestamp");
+    }
+    const fallback = toBigInt(value);
+    if (fallback <= 0n || fallback > (1n << 64n) - 1n || round.reveal_deadline - fallback < 300n) {
+      throw new SubRosaClientConfigError("fallbackAt must leave at least 300 seconds before revealDeadline");
+    }
+    reveal = { tag: "OwnerTriggered", values: [fallback] };
+  } else {
+    throw new SubRosaClientConfigError("unsupported reveal policy");
+  }
+  return { ...round, policy: { partner, reveal } };
 }
 
 export class SubRosaClient {
@@ -533,6 +561,21 @@ export class SubRosaClient {
       ),
     );
     return this.#sendUnwrap(tx);
+  }
+
+  async createRoundV3(params: CreateRoundV3Params): Promise<bigint> {
+    const operator = params.operator ?? this.#requireSource("operator");
+    const tx = await this.#validatedContractCall(() =>
+      this.contract.create_round_v3(v3RoundArgs(params, operator)),
+    );
+    return this.#sendUnwrap(tx);
+  }
+
+  preflightCreateRoundV3(params: CreateRoundV3Params): Promise<PreflightResult<bigint>> {
+    return this.#preflight("create_round_v3", () => {
+      const operator = params.operator ?? this.#requireSource("operator");
+      return this.#validatedContractCall(() => this.contract.create_round_v3(v3RoundArgs(params, operator)));
+    });
   }
 
   async commit(params: CommitParams): Promise<void> {
@@ -960,6 +1003,24 @@ export class SubRosaClient {
     return tx.result.unwrap();
   }
 
+  /** Only an explicitly missing capability function denotes a legacy deployment. */
+  async supportsRevealPolicy(): Promise<boolean> {
+    try {
+      const tx = await this.#validatedContractCall(() => this.contract.protocol_version());
+      return tx.result === 3;
+    } catch (error) {
+      if (isMissingContractFunction(error, "protocol_version")) return false;
+      throw error;
+    }
+  }
+
+  async getRevealStateV3(roundId: number | bigint): Promise<RevealStateV3> {
+    const tx = await this.#validatedContractCall(() =>
+      this.contract.get_reveal_state_v3({ round_id: normalizeRoundId(roundId) }),
+    );
+    return tx.result.unwrap();
+  }
+
   async getRoundPolicyV2(
     roundId: number | bigint,
   ): Promise<RoundPolicyV2 | undefined> {
@@ -1153,6 +1214,13 @@ export class SubRosaClient {
       this.getBiddersV2(rid),
       this.getRoundPolicyV2(rid),
     ]);
+    if (round.protocol_version !== 2 && round.protocol_version !== 3) {
+      throw new SubRosaClientConfigError(`unsupported round protocol ${round.protocol_version}`);
+    }
+    if (round.protocol_version === 3 && !policy) {
+      throw new SubRosaClientConfigError("v3 round requires its partner policy for receipt export");
+    }
+    const revealState = round.protocol_version === 3 ? await this.getRevealStateV3(rid) : undefined;
     const submissions: CoreV2Receipt["submissions"] = {};
     for (const bidder of bidders) {
       const [state, seal] = await Promise.all([
@@ -1176,8 +1244,14 @@ export class SubRosaClient {
     }
 
     return {
-      version: 2,
-      protocolVersion: 2,
+      version: round.protocol_version,
+      protocolVersion: round.protocol_version,
+      ...(revealState ? {
+        revealPolicy: revealState.policy.tag === "Timed"
+          ? { type: "timed" as const }
+          : { type: "owner-triggered" as const, controller: round.operator, fallbackAt: revealState.policy.values[0].toString() },
+        openedAt: revealState.opened_at?.toString() ?? null,
+      } : {}),
       network: this.networkPassphrase,
       networkFingerprint: networkFingerprint(this.networkPassphrase),
       contractId: this.contractId,

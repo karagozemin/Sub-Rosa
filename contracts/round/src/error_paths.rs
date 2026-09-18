@@ -53,6 +53,8 @@ const ERROR_PATH_REGISTRY: &[(Error, &'static str)] = &[
     (Error::RoundDurationTooLong, "error_path_round_duration_too_long"),
     (Error::ParticipantNotEligible, "error_path_participant_not_eligible"),
     (Error::EscrowPolicyMismatch, "error_path_escrow_policy_mismatch"),
+    (Error::InvalidRevealPolicy, "v3_rejects_short_or_invalid_fallback_windows_for_both_modes"),
+    (Error::RevealPolicyMissing, "v3_missing_policy_fails_closed_and_late_open_can_be_voided"),
 ];
 
 fn partner_policy_round(f: &Fixture, eligible: &Address, fixed_escrow: i128) -> u64 {
@@ -77,8 +79,8 @@ fn partner_policy_round(f: &Fixture, eligible: &Address, fixed_escrow: i128) -> 
         },
         &VEC_ROUND,
         &ClearingRule::HighestBid,
-        &(crate::test::VEC_GENESIS + crate::test::VEC_PERIOD * VEC_ROUND - 100),
-        &(crate::test::VEC_GENESIS + crate::test::VEC_PERIOD * VEC_ROUND + 200),
+        &(crate::test::VEC_GENESIS + crate::test::VEC_PERIOD * (VEC_ROUND - 1) - 100),
+        &(crate::test::VEC_GENESIS + crate::test::VEC_PERIOD * (VEC_ROUND - 1) + 200),
         &Bytes::new(&f.env),
         &5,
     )
@@ -124,7 +126,7 @@ fn settle_happy_path(f: &Fixture, t_reveal: u64, commit_deadline: u64, reveal_de
 fn error_paths_registry_covers_every_variant() {
     assert_eq!(
         ERROR_PATH_REGISTRY.len(),
-        33,
+        35,
         "update ERROR_PATH_REGISTRY when adding/removing Error variants"
     );
     for (variant, name) in ERROR_PATH_REGISTRY {

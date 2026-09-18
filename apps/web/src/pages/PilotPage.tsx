@@ -1,3 +1,4 @@
+import { drandRoundTime } from "@sub-rosa/tlock";
 import { Buffer } from "buffer";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -13,6 +14,7 @@ import {
   sealProposal,
   type RoundV2,
   type RoundPolicyV2,
+  type RevealStateV3,
   verifyReceiptV2,
 } from "@sub-rosa/sdk";
 import {
@@ -70,6 +72,10 @@ export function PilotPage({ goHome }: { goHome: () => void }) {
   const [address, setAddress] = useState<string | null>(null);
   const [template, setTemplate] = useState<PilotTemplate>("proposal");
   const [requestTitle, setRequestTitle] = useState("Soroban security audit");
+  const [openingMode, setOpeningMode] = useState<"timed" | "owner-triggered">("timed");
+  const [ownerMinutes, setOwnerMinutes] = useState("5");
+  const [supportsOwnerOpening, setSupportsOwnerOpening] = useState(false);
+  const [revealState, setRevealState] = useState<RevealStateV3 | null>(null);
   const [commitMinutes, setCommitMinutes] = useState("5");
   const [paymentAsset, setPaymentAsset] = useState("");
   const [lotAsset, setLotAsset] = useState("");
@@ -93,6 +99,10 @@ export function PilotPage({ goHome }: { goHome: () => void }) {
   const revealCountdown = useDrandCountdown(
     round ? Number(round.reveal_round) : 0,
   );
+  const ownerOpening = round && revealState?.policy.tag === "OwnerTriggered" ? {
+    controller: round.operator, caller: address, fallbackAt: Number(revealState.policy.values[0]),
+    now: Math.floor(Date.now() / 1000), revealDeadline: Number(round.reveal_deadline),
+  } : undefined;
   const revealAction = pilotRevealAction(
     round?.status.tag ?? "Unknown",
     revealCountdown.published,
@@ -102,6 +112,7 @@ export function PilotPage({ goHome }: { goHome: () => void }) {
       round.bidders.length > 0 &&
       revealedSubmissions.length === round.bidders.length,
     ),
+    ownerOpening,
   );
   const submissionIsAuction = round
     ? round.mode.tag === "Auction"
@@ -121,6 +132,15 @@ export function PilotPage({ goHome }: { goHome: () => void }) {
     if (!roundId) return "";
     return `${window.location.origin}${window.location.pathname}#/pilot/${roundId}`;
   }, [roundId]);
+
+  useEffect(() => {
+    let active = true;
+    setSupportsOwnerOpening(false);
+    if (sdk) void sdk.supportsRevealPolicy().then((supported) => {
+      if (active) setSupportsOwnerOpening(supported);
+    }).catch(() => { /* Keep owner opening disabled until the capability is confirmed. */ });
+    return () => { active = false; };
+  }, [sdk]);
 
   async function connect() {
     setBusy("connect");
@@ -154,6 +174,9 @@ export function PilotPage({ goHome }: { goHome: () => void }) {
     ]);
     const nextRound = tx.result.unwrap();
     const nextPolicy = policyTx.result ?? null;
+    if (nextRound.protocol_version !== 2 && nextRound.protocol_version !== 3) throw new Error("Unsupported round version");
+    const nextReveal = nextRound.protocol_version === 3
+      ? (await reader.get_reveal_state_v3({ round_id: rid })).result.unwrap() : null;
 
     const revealed = await Promise.all(
       nextRound.bidders.map(async (bidder) => {
@@ -173,6 +196,7 @@ export function PilotPage({ goHome }: { goHome: () => void }) {
 
     setRound(nextRound);
     setRoundPolicy(nextPolicy);
+    setRevealState(nextReveal);
     if (nextPolicy && nextRound.mode.tag === "Auction") {
       setEscrow(nextPolicy.fixed_escrow.toString());
     }
@@ -189,6 +213,7 @@ export function PilotPage({ goHome }: { goHome: () => void }) {
       setRoundId(nextRoundId);
       setRound(null);
       setRoundPolicy(null);
+      setRevealState(null);
       setRevealedSubmissions([]);
       if (reader && nextRoundId) {
         void refresh(nextRoundId).catch((error) =>
@@ -221,7 +246,7 @@ export function PilotPage({ goHome }: { goHome: () => void }) {
       const commitSeconds = Math.max(60, Number(commitMinutes) * 60);
       const revealRound = await roundInSeconds(drand, commitSeconds + 15);
       const info = await drand.chain().info();
-      const revealAt = Number(info.genesis_time) + Number(info.period) * revealRound;
+      const revealAt = drandRoundTime(revealRound, info);
       const auditor = generateAuditorKeypair();
       const itemRef = await sha256Bytes(`${requestTitle}:${address}:${Date.now()}`);
       const isAuction = template === "auction";
@@ -239,7 +264,9 @@ export function PilotPage({ goHome }: { goHome: () => void }) {
       if (isAuction && fixedEscrow <= 0n) {
         throw new Error("Fixed escrow must be positive for an asset auction");
       }
-      const tx = await contract.create_partner_round_v2({
+      if (openingMode === "owner-triggered" && !supportsOwnerOpening) throw new Error("Owner opening is unavailable on this deployment");
+      const fallbackAt = revealAt + Number(ownerMinutes) * 60;
+      const args: Parameters<typeof contract.create_partner_round_v2>[0] = {
         operator: address,
         item_ref: Buffer.from(itemRef),
         schema_ref: Buffer.from(
@@ -261,10 +288,13 @@ export function PilotPage({ goHome }: { goHome: () => void }) {
           values: undefined,
         },
         commit_deadline: BigInt(revealAt - 10),
-        reveal_deadline: BigInt(revealAt + 300),
+        reveal_deadline: BigInt((openingMode === "owner-triggered" ? fallbackAt : revealAt) + 300),
         auditor_pubkey: Buffer.from(auditor.publicKey),
         max_participants: 25,
-      });
+      };
+      const tx = openingMode === "owner-triggered"
+        ? await contract.create_round_v3({ ...args, policy: { partner: args.policy, reveal: { tag: "OwnerTriggered", values: [BigInt(fallbackAt)] } } })
+        : await contract.create_partner_round_v2(args);
       const sent = await tx.signAndSend();
       const nextId = sent.result.unwrap().toString();
       setRoundId(nextId);
@@ -337,7 +367,7 @@ export function PilotPage({ goHome }: { goHome: () => void }) {
 
   async function revealAll() {
     if (!contract || !round || !roundId) return;
-    if (round.status.tag === "Open" && !revealCountdown.published) return;
+    if (!revealAction.ready) return;
     setBusy("reveal");
     try {
       const rid = BigInt(roundId);
@@ -448,6 +478,19 @@ export function PilotPage({ goHome }: { goHome: () => void }) {
     }
   }
 
+  async function voidRound() {
+    if (!contract || !roundId) return;
+    setBusy("void");
+    try {
+      const tx = await contract.void_v2({ round_id: BigInt(roundId) });
+      await tx.signAndSend();
+      await refresh();
+      toast.push("success", "Round voided", "Escrow and auction lot returned");
+    } catch (error) {
+      toast.push("error", "Refund failed", displayError(error));
+    } finally { setBusy(null); }
+  }
+
   async function copyLink() {
     if (!shareUrl) return;
     await navigator.clipboard.writeText(shareUrl);
@@ -474,7 +517,7 @@ export function PilotPage({ goHome }: { goHome: () => void }) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `sub-rosa-round-${roundId}-v2-receipt.json`;
+      link.download = `sub-rosa-round-${roundId}-v${receipt.version}-receipt.json`;
       link.click();
       URL.revokeObjectURL(url);
       toast.push("success", "Receipt verified", `Round #${roundId} downloaded`);
@@ -553,6 +596,24 @@ export function PilotPage({ goHome }: { goHome: () => void }) {
                 <option value="60">1 hour</option>
               </select>
             </label>
+            <label>
+              Reveal opening
+              <select value={openingMode} onChange={(event) => setOpeningMode(event.target.value as "timed" | "owner-triggered")}>
+                <option value="timed">Timed — anyone can open after Drand</option>
+                <option value="owner-triggered" disabled={!supportsOwnerOpening}>Owner-triggered{!supportsOwnerOpening ? " — unavailable on this deployment" : ""}</option>
+              </select>
+            </label>
+            {openingMode === "owner-triggered" && <>
+              <label>
+                Owner opening window after Drand
+                <select value={ownerMinutes} onChange={(event) => setOwnerMinutes(event.target.value)}>
+                  <option value="5">5 minutes</option>
+                  <option value="15">15 minutes</option>
+                  <option value="60">1 hour</option>
+                </select>
+              </label>
+              <p>Only your wallet can open during this window. Afterwards anyone can open, with 5 more minutes to reveal submissions. Drand publication makes submissions decryptable even if you have not opened the round.</p>
+            </>}
             {template === "auction" && (
               <>
                 <label>
@@ -667,6 +728,12 @@ export function PilotPage({ goHome }: { goHome: () => void }) {
                 {round.mode.tag === "Auction" && (
                   <div><dt>Fixed escrow</dt><dd>{roundPolicy?.fixed_escrow.toString() ?? "Legacy variable cap"}</dd></div>
                 )}
+                <div><dt>Opening</dt><dd>{ownerOpening ? "Owner-triggered" : "Timed"}</dd></div>
+                {ownerOpening && <>
+                  <div><dt>Controller</dt><dd>{shortAddress(ownerOpening.controller)}</dd></div>
+                  <div><dt>Public fallback</dt><dd>{new Date(ownerOpening.fallbackAt * 1000).toLocaleString()}</dd></div>
+                </>}
+                <div><dt>Reveal deadline</dt><dd>{new Date(Number(round.reveal_deadline) * 1000).toLocaleString()}</dd></div>
                 <div><dt>Drand round</dt><dd>{round.reveal_round.toString()}</dd></div>
                 <div><dt>Winner</dt><dd>{shortAddress(round.winner)}</dd></div>
                 <div><dt>Payment asset</dt><dd>{shortAddress(round.payment_asset)}</dd></div>
@@ -678,7 +745,11 @@ export function PilotPage({ goHome }: { goHome: () => void }) {
                   </>
                 )}
               </dl>
+              {ownerOpening && <p>Opening controls the on-chain phase. Once Drand publishes, anyone with the ciphertext can decrypt it off-chain.</p>}
               <div className="pilot-actions">
+                {round.status.tag === "Open" && Date.now() / 1000 > Number(round.reveal_deadline) + 3600 && (
+                  <button type="button" className="secondary-action compact" disabled={!address || busy !== null} onClick={voidRound}>Void and refund</button>
+                )}
                 <button type="button" className="secondary-action compact" onClick={copyLink}>Copy link</button>
                 <button type="button" className="secondary-action compact" onClick={() => refresh()}>Refresh</button>
                 {(round.status.tag === "Settled" || round.status.tag === "Voided") && (
@@ -748,7 +819,7 @@ export function PilotPage({ goHome }: { goHome: () => void }) {
             ) : (
               <div className="pilot-empty">
                 {round.status.tag === "Open"
-                  ? "Submissions remain encrypted until the Drand reveal."
+                  ? (revealCountdown.published ? "Drand time has passed. Submissions can be decrypted off-chain; on-chain reveal is pending." : "Submissions remain encrypted until Drand publishes the reveal round.")
                   : "No decrypted submissions yet."}
               </div>
             )}

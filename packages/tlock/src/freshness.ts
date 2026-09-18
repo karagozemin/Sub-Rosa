@@ -5,6 +5,18 @@ export interface DrandRoundInfo {
   period: number;
 }
 
+/** Unix seconds at which round R is scheduled. Drand round 1 is at genesis. */
+export function drandRoundTime(round: number, info: DrandRoundInfo): number {
+  if (!Number.isSafeInteger(round) || round < 1) throw new Error("Drand round must be a positive safe integer");
+  if (!Number.isSafeInteger(info.genesis_time) || info.genesis_time < 0 ||
+      !Number.isSafeInteger(info.period) || info.period <= 0) {
+    throw new Error("Invalid Drand genesis or period");
+  }
+  const time = info.genesis_time + info.period * (round - 1);
+  if (!Number.isSafeInteger(time)) throw new Error("Drand round time exceeds safe integer range");
+  return time;
+}
+
 export type FreshnessStatus = "fresh" | "stale" | "future" | "unknown";
 
 export interface FreshnessResult {
@@ -40,8 +52,13 @@ export function classifyDrandRound(
     return { status: "unknown", reason: "invalid timestamp" };
   }
 
-  // Compute publish time matching the existing keeper logic convention.
-  const publishAtMs = (info.genesis_time + info.period * round) * 1000;
+  let publishAtMs: number;
+  try {
+    publishAtMs = drandRoundTime(round, info) * 1000;
+    if (!Number.isSafeInteger(publishAtMs)) throw new Error("unsafe timestamp");
+  } catch {
+    return { status: "unknown", reason: "invalid drand round timing" };
+  }
 
   if (nowMs < publishAtMs) {
     return {

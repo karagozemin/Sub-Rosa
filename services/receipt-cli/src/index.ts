@@ -3,7 +3,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { SubRosaClient, parseReceipt, serializeReceipt, verifyReceipt, redactReceipt } from "@sub-rosa/sdk";
+import { SubRosaClient, parseReceipt, serializeReceipt, verifyReceipt, redactReceipt, parseReceiptV2, serializeReceiptV2, verifyReceiptV2, type RoundReceipt, type CoreV2Receipt } from "@sub-rosa/sdk";
 import { buildJsonOutput } from "./json-output.js";
 
 function usage(): never {
@@ -17,6 +17,7 @@ Environment for "export":
   RPC_URL                  Soroban RPC endpoint (default: https://soroban-testnet.stellar.org)
   NETWORK_PASSPHRASE       Network passphrase (default: Test SDF Network ; September 2015)
   CONTRACT_ID              Round contract ID (C…)
+  RECEIPT_PROTOCOL_VERSION  2 for structured v2/v3 records (default), 1 for legacy
 `);
   process.exit(1);
 }
@@ -33,8 +34,11 @@ async function cmdExport(roundIdStr: string) {
   }
 
   const client = new SubRosaClient({ rpcUrl, networkPassphrase, contractId });
-  const receipt = await client.exportReceipt(roundId);
-  const json = serializeReceipt(receipt);
+  const protocol = process.env.RECEIPT_PROTOCOL_VERSION ?? "2";
+  if (protocol !== "1" && protocol !== "2") throw new Error("RECEIPT_PROTOCOL_VERSION must be 1 or 2");
+  const json = protocol === "1"
+    ? serializeReceipt(await client.exportReceipt(roundId))
+    : serializeReceiptV2(await client.exportReceiptV2(roundId));
   const filename = `round-${roundId}-receipt.json`;
   writeFileSync(filename, json, "utf-8");
   console.log(`Wrote ${filename}`);
@@ -53,9 +57,10 @@ async function cmdVerify(path: string, jsonMode: boolean, artifactPath?: string)
     process.exit(1);
   }
 
-  let receipt;
+  let receipt: RoundReceipt | CoreV2Receipt;
   try {
-    receipt = parseReceipt(rawJson);
+    const version = JSON.parse(rawJson)?.version;
+    receipt = version === 2 || version === 3 ? parseReceiptV2(rawJson) : parseReceipt(rawJson);
   } catch (e) {
     if (jsonMode) {
       console.log(JSON.stringify(buildJsonOutput(null, null, `Invalid JSON: ${e}`), null, 2));
@@ -65,7 +70,9 @@ async function cmdVerify(path: string, jsonMode: boolean, artifactPath?: string)
     process.exit(1);
   }
 
-  const result = verifyReceipt(receipt);
+  const result = receipt.version === 2 || receipt.version === 3
+    ? verifyReceiptV2(receipt as CoreV2Receipt) : verifyReceipt(receipt as RoundReceipt);
+  const artifactChecksum = "artifactChecksum" in receipt ? receipt.artifactChecksum : undefined;
 
   if (artifactPath) {
     let computedChecksum = "";
@@ -89,7 +96,7 @@ async function cmdVerify(path: string, jsonMode: boolean, artifactPath?: string)
       process.exit(1);
     }
 
-    if (!receipt.artifactChecksum) {
+    if (!artifactChecksum) {
       const message = "Missing checksum metadata in receipt";
       result.valid = false;
       result.issues.push({
@@ -105,8 +112,8 @@ async function cmdVerify(path: string, jsonMode: boolean, artifactPath?: string)
       process.exit(1);
     }
 
-    if (receipt.artifactChecksum !== computedChecksum) {
-      const message = `Checksum mismatch. Expected: ${receipt.artifactChecksum}, computed: ${computedChecksum}`;
+    if (artifactChecksum !== computedChecksum) {
+      const message = `Checksum mismatch. Expected: ${artifactChecksum}, computed: ${computedChecksum}`;
       result.valid = false;
       result.issues.push({
         severity: "error",
@@ -154,6 +161,7 @@ async function cmdRedact(inputPath: string, outputPath?: string) {
 
   let receipt;
   try {
+    if ([2, 3].includes(JSON.parse(json)?.version)) throw new Error("Structured receipts cannot be redacted without invalidating envelope evidence");
     receipt = parseReceipt(json);
   } catch (e) {
     console.error(`Invalid JSON: ${e}`);

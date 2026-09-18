@@ -39,39 +39,39 @@ test("freshness: invalid timestamp returns unknown", () => {
 test("freshness: future round", () => {
   const info = { genesis_time: 1000, period: 3 };
   const round = 10;
-  // publishAtMs = (1000 + 3 * 10) * 1000 = 1030000
+  // publishAtMs = (1000 + 3 * (10 - 1)) * 1000 = 1027000
 
   const now = 1000000; // well before publish
   const res = classifyDrandRound(round, info, now);
   assert.equal(res.status, "future");
-  assert.equal(res.publishAtMs, 1030000);
+  assert.equal(res.publishAtMs, 1027000);
 });
 
 test("freshness: fresh round", () => {
   const info = { genesis_time: 1000, period: 3 };
   const round = 10;
-  // publishAtMs = 1030000
+  // publishAtMs = 1027000
 
   // Exactly at publish time
-  assert.equal(classifyDrandRound(round, info, 1030000).status, "fresh");
+  assert.equal(classifyDrandRound(round, info, 1027000).status, "fresh");
 
   // Just under threshold
-  assert.equal(classifyDrandRound(round, info, 1030000 + DEFAULT_STALE_THRESHOLD_MS).status, "fresh");
+  assert.equal(classifyDrandRound(round, info, 1027000 + DEFAULT_STALE_THRESHOLD_MS).status, "fresh");
 
   // Custom threshold
-  assert.equal(classifyDrandRound(round, info, 1030005, 10).status, "fresh");
+  assert.equal(classifyDrandRound(round, info, 1027005, 10).status, "fresh");
 });
 
 test("freshness: stale round", () => {
   const info = { genesis_time: 1000, period: 3 };
   const round = 10;
-  // publishAtMs = 1030000
+  // publishAtMs = 1027000
 
   // Just over threshold
-  const res = classifyDrandRound(round, info, 1030000 + DEFAULT_STALE_THRESHOLD_MS + 1);
+  const res = classifyDrandRound(round, info, 1027000 + DEFAULT_STALE_THRESHOLD_MS + 1);
   assert.equal(res.status, "stale");
   assert.equal(res.ageMs, DEFAULT_STALE_THRESHOLD_MS + 1);
 
   // Custom threshold stale
-  assert.equal(classifyDrandRound(round, info, 1030011, 10).status, "stale");
+  assert.equal(classifyDrandRound(round, info, 1027011, 10).status, "stale");
 });

@@ -208,3 +208,57 @@ test("returns verification errors instead of throwing for malformed collections"
     ),
   );
 });
+
+
+function ownerReceipt(): CoreV2Receipt {
+  const receipt = auctionReceipt();
+  const privacy = BigInt(receipt.drandGenesis) + BigInt(receipt.drandPeriod) * BigInt(receipt.revealRound - 1);
+  return { ...receipt, version: 3, protocolVersion: 3,
+    commitDeadline: (privacy - 1n).toString(), revealDeadline: (privacy + 360n).toString(),
+    revealPolicy: { type: "owner-triggered", controller: receipt.operator, fallbackAt: (privacy + 60n).toString() },
+    openedAt: privacy.toString(),
+  };
+}
+
+test("v3 receipts retain immutable policy and opening time and reject policy tampering", () => {
+  const receipt = ownerReceipt();
+  assert.equal(verifyReceiptV2(receipt).valid, true);
+  assert.deepEqual(parseReceiptV2(serializeReceiptV2(receipt)), receipt);
+  const bad: CoreV2Receipt[] = [
+    { ...receipt, revealPolicy: undefined },
+    { ...receipt, openedAt: null },
+    { ...receipt, openedAt: "1" },
+    { ...receipt, revealPolicy: { type: "owner-triggered", controller: address(9), fallbackAt: (receipt.revealPolicy as any).fallbackAt } },
+    { ...receipt, revealPolicy: { type: "owner-triggered", controller: receipt.operator, fallbackAt: receipt.revealDeadline } },
+    { ...receipt, version: 2, protocolVersion: 2 },
+  ];
+  for (const value of bad) assert.equal(verifyReceiptV2(value).valid, false);
+  assert.equal(verifyReceiptV2({ ...receipt, status: "Open", openedAt: null }).issues.some(i => i.code === "invalid_opened_at"), false);
+});
+
+test("exporter never labels a v3 record as a legacy receipt or ignores missing policy", async () => {
+  const sdk = client();
+  const receipt = ownerReceipt();
+  sdk.getRoundV2 = async () => ({
+    protocol_version: 3, item_ref: Buffer.alloc(32), schema_ref: Buffer.alloc(32), mode: { tag: "ReceiptOnly" },
+    lot_amount: 0n, reveal_round: 12345n, clearing_rule: { tag: "HighestBid" },
+    commit_deadline: BigInt(receipt.commitDeadline), reveal_deadline: BigInt(receipt.revealDeadline),
+    operator: receipt.operator, auditor_pubkey: Buffer.alloc(0), max_participants: 25, bidders: [], winning_bid: 0n, status: { tag: "Open" },
+  }) as any;
+  sdk.getConfig = async () => ({ drand_genesis: BigInt(receipt.drandGenesis), drand_period: 3n }) as any;
+  sdk.getBiddersV2 = async () => [];
+  sdk.getRoundPolicyV2 = async () => ({
+    settlement: { mode: { tag: "ReceiptOnly", values: undefined }, payment_asset: undefined, lot_asset: undefined, lot_amount: 0n },
+    fixed_escrow: 0n, eligible_participants: [],
+  });
+  sdk.getRevealStateV3 = async () => ({ policy: { tag: "OwnerTriggered", values: [BigInt((receipt.revealPolicy as any).fallbackAt)] }, opened_at: undefined });
+  const exported = await sdk.exportReceiptV2(1);
+  assert.equal(exported.version, 3);
+  assert.equal(exported.protocolVersion, 3);
+  assert.deepEqual(exported.revealPolicy, receipt.revealPolicy);
+  assert.equal(exported.openedAt, null);
+  sdk.getRevealStateV3 = async () => { throw new Error("RevealPolicyMissing"); };
+  await assert.rejects(sdk.exportReceiptV2(1), /RevealPolicyMissing/);
+  sdk.getRoundPolicyV2 = async () => undefined;
+  await assert.rejects(sdk.exportReceiptV2(1), /requires its partner policy/);
+});

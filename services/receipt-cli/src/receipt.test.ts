@@ -2,12 +2,14 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
+import { readFileSync, writeFileSync, unlinkSync, mkdtempSync, rmSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { execSync } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { verifyReceipt, parseReceipt, serializeReceipt } from "@sub-rosa/sdk";
+import { tmpdir } from "node:os";
+import { serializeReceiptV2, networkFingerprint, type CoreV2Receipt } from "@sub-rosa/sdk";
 import { buildJsonOutput } from "./json-output.js";
 
 const DIR = dirname(fileURLToPath(import.meta.url));
@@ -250,4 +252,33 @@ test("CLI: --verify-artifact-checksum with missing artifact file fails", () => {
   } finally {
     try { unlinkSync(receiptPath); } catch {}
   }
+});
+
+
+test("CLI verifies structured v2/v3 receipts and rejects forged owner metadata", (t) => {
+  const dir = mkdtempSync(resolve(tmpdir(), "sub-rosa-receipt-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const path = resolve(dir, "receipt.json");
+  const network = "Test SDF Network ; September 2015";
+  const receipt: CoreV2Receipt = {
+    version: 3, protocolVersion: 3, network, networkFingerprint: networkFingerprint(network),
+    contractId: "C" + "A".repeat(55), exportedAt: new Date().toISOString(), roundId: "1", itemRef: "00".repeat(32), schemaRef: "00".repeat(32),
+    mode: "ReceiptOnly", paymentAsset: null, lotAsset: null, lotAmount: "0", revealRound: 1, drandGenesis: "1000", drandPeriod: "3",
+    clearingRule: "HighestBid", commitDeadline: "999", revealDeadline: "1360", operator: "owner", auditorPubkey: "", maxParticipants: 25,
+    policy: { enforced: true, fixedEscrow: "0", participation: "Open", eligibleParticipants: [] },
+    revealPolicy: { type: "owner-triggered", controller: "owner", fallbackAt: "1060" }, openedAt: "1000",
+    bidders: [], submissions: {}, winner: null, winningAmount: "0", status: "Settled",
+  };
+  const verify = (value: CoreV2Receipt) => {
+    writeFileSync(path, serializeReceiptV2(value));
+    return spawnSync(process.execPath, ["--import", "tsx", resolve(DIR, "index.ts"), "verify", path, "--json"], { encoding: "utf8" });
+  };
+  const good = verify(receipt);
+  assert.equal(good.status, 0, good.stderr + good.stdout);
+  assert.equal(JSON.parse(good.stdout).valid, true);
+  const tampered = verify({ ...receipt, revealPolicy: { type: "owner-triggered", controller: "attacker", fallbackAt: "1060" } });
+  assert.equal(tampered.status, 1);
+  assert.ok(JSON.parse(tampered.stdout).errors.some((issue: {code: string}) => issue.code === "invalid_reveal_policy"));
+  const { revealPolicy: _policy, openedAt: _opened, ...legacy } = receipt;
+  assert.equal(verify({ ...legacy, version: 2, protocolVersion: 2 }).status, 0);
 });
