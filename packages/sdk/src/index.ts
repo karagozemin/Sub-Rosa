@@ -74,11 +74,15 @@ export {
 } from "./network.js";
 export {
   SUB_ROSA_DEPLOYMENTS,
+  SUB_ROSA_REVEAL_POLICY_V3_DEPLOYMENTS,
+  REVEAL_POLICY_V3_WASM_HASH,
   contractExplorerUrl,
   isSubRosaNetwork,
   resolveSubRosaDeployment,
+  resolveRevealPolicyV3Deployment,
   transactionExplorerUrl,
   type DeploymentStatus,
+  type ProtocolVersion,
   type ResolveDeploymentOptions,
   type ResolvedSubRosaDeployment,
   type SubRosaDeployment,

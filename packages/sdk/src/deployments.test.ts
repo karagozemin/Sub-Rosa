@@ -4,8 +4,10 @@ import { describe, it } from "node:test";
 import { SubRosaClientConfigError } from "./errors.js";
 import {
   SUB_ROSA_DEPLOYMENTS,
+  SUB_ROSA_REVEAL_POLICY_V3_DEPLOYMENTS,
   contractExplorerUrl,
   isSubRosaNetwork,
+  resolveRevealPolicyV3Deployment,
   resolveSubRosaDeployment,
   transactionExplorerUrl,
 } from "./deployments.js";
@@ -75,5 +77,35 @@ describe("Sub Rosa network deployments", () => {
     assert.equal(isSubRosaNetwork("testnet"), true);
     assert.equal(isSubRosaNetwork("mainnet"), true);
     assert.equal(isSubRosaNetwork("futurenet"), false);
+  });
+
+  it("keeps the Core v2 defaults independent of reveal-policy-v3", () => {
+    assert.equal(SUB_ROSA_DEPLOYMENTS.testnet.protocolVersion, "core-v2");
+    assert.notEqual(
+      resolveSubRosaDeployment("testnet").contractId,
+      SUB_ROSA_REVEAL_POLICY_V3_DEPLOYMENTS.testnet.contractId,
+    );
+  });
+
+  it("resolves the reveal-policy-v3 testnet deployment as an explicit opt-in", () => {
+    const deployment = resolveRevealPolicyV3Deployment("testnet");
+    assert.equal(deployment.protocolVersion, "reveal-policy-v3");
+    assert.equal(deployment.status, "active");
+    assert.equal(deployment.official, true);
+    assert.equal(
+      deployment.contractId,
+      "CB7VIYY4RQLZG2Y6HLDWB3UKSVOAIDYFZ5TGW5AUBCIPJHTCZV4ZWQFF",
+    );
+  });
+
+  it("requires a caller-owned contract for reveal-policy-v3 mainnet (pending review)", () => {
+    assert.throws(
+      () => resolveRevealPolicyV3Deployment("mainnet"),
+      /no reveal-policy-v3 mainnet contract is configured/,
+    );
+    const contractId = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M";
+    const deployment = resolveRevealPolicyV3Deployment("mainnet", { contractId });
+    assert.equal(deployment.contractId, contractId);
+    assert.equal(deployment.official, false);
   });
 });
