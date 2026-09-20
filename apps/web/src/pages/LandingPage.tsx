@@ -279,7 +279,7 @@ export function LandingPage({
           transition={transition}
         >
           <div>
-            <span>Pilot partners</span>
+            <span>Real Integration Partners</span>
             <h2 id="pilot-partners-title">Sub Rosa in partner workflows.</h2>
           </div>
           <p>
