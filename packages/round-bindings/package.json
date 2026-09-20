@@ -1,6 +1,6 @@
 {
   "name": "@sub-rosa/round-bindings",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": false,
   "type": "module",
   "description": "Generated TypeScript bindings for the Sub Rosa Round contract (spec-accurate; do not hand-edit).",

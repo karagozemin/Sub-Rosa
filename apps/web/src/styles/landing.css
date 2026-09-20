@@ -682,6 +682,213 @@
   line-height: 1.55;
 }
 
+/* === Pilot partners === */
+.pilot-partners-section {
+  margin-bottom: 56px;
+}
+
+.pilot-partners-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.pilot-partners-head > div > span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.pilot-partners-head h2,
+.pilot-partners-head p {
+  margin: 0;
+}
+
+.pilot-partners-head h2 {
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+  letter-spacing: -0.03em;
+}
+
+.pilot-partners-head p {
+  max-width: 58ch;
+  color: var(--muted);
+  font-size: 0.96rem;
+  line-height: 1.55;
+}
+
+.pilot-partners-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.landing-partner-card {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 390px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-lg);
+  color: inherit;
+  background:
+    linear-gradient(180deg, rgba(91, 108, 255, 0.04), transparent 45%),
+    var(--surface-1);
+  box-shadow: var(--shadow-md);
+  text-decoration: none;
+  transition:
+    border-color 220ms var(--ease),
+    box-shadow 220ms var(--ease),
+    background 220ms var(--ease);
+}
+
+.landing-partner-card.linked:hover {
+  border-color: rgba(91, 108, 255, 0.44);
+  background:
+    linear-gradient(180deg, rgba(91, 108, 255, 0.1), transparent 48%),
+    var(--surface-2);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.45);
+}
+
+.landing-partner-logo {
+  display: grid;
+  height: 154px;
+  flex: 0 0 154px;
+  place-items: center;
+  overflow: hidden;
+  border-bottom: 1px solid var(--line-1);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.landing-partner-logo img {
+  display: block;
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+}
+
+.landing-partner-logo.stelhacks {
+  background-color: #000000;
+  background-image: url("/pilots/stelhacks/stelhacks-logo.png");
+  background-position: center 52%;
+  background-repeat: no-repeat;
+  background-size: 100% auto;
+}
+
+.landing-partner-logo.stelhacks img {
+  opacity: 0;
+}
+
+.landing-partner-logo.offer-hub img {
+  width: 58%;
+  height: 58%;
+}
+
+.landing-partner-logo.octarine img {
+  width: 76%;
+  height: 76%;
+}
+
+.landing-partner-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 22px;
+}
+
+.landing-partner-card-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.landing-partner-card-topline > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border: 1px solid rgba(91, 108, 255, 0.34);
+  border-radius: 999px;
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(91, 108, 255, 0.08);
+}
+
+.landing-partner-card-topline > span.real::before {
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  border-radius: 50%;
+  content: "";
+  background: var(--green);
+  box-shadow: 0 0 10px rgba(91, 108, 255, 0.8);
+}
+
+.landing-partner-card-topline > span.planned {
+  border-color: rgba(245, 190, 82, 0.34);
+  color: var(--amber);
+  background: rgba(245, 190, 82, 0.08);
+}
+
+.landing-partner-card-topline small {
+  overflow: hidden;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.landing-partner-card h3 {
+  margin: 0 0 10px;
+  font-size: 1.45rem;
+  letter-spacing: -0.02em;
+}
+
+.landing-partner-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.landing-partner-card-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: auto;
+  padding-top: 22px;
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+}
+
+.landing-partner-card-cta > span {
+  transition: transform 180ms var(--ease);
+}
+
+.landing-partner-card.linked:hover .landing-partner-card-cta > span {
+  transform: translate(2px, -2px);
+}
+
+.landing-partner-card-cta.static {
+  color: var(--faint);
+}
+
 /* === Use cases grid === */
 .landing-cases-section {
   margin-top: 8px;
@@ -812,6 +1019,10 @@ button.case-card-link strong {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .pilot-partners-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .pilot-banner {
     grid-template-columns: 1fr 1fr;
   }
@@ -861,6 +1072,14 @@ button.case-card-link strong {
 
   .landing-cases {
     grid-template-columns: 1fr;
+  }
+
+  .pilot-partners-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-partner-card {
+    min-height: 360px;
   }
 
   .pilot-banner {

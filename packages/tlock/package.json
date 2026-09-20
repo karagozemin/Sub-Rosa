@@ -1,6 +1,6 @@
 {
   "name": "@sub-rosa/tlock",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": false,
   "type": "module",
   "description": "Off-chain seal for Sub Rosa: tlock encrypt/decrypt to a Drand round + auditor identity blob, byte-compatible with the Round contract.",

@@ -19,6 +19,70 @@ const staggerParent = {
   },
 };
 
+interface PilotPartner {
+  id: "stelhacks" | "offer-hub" | "octarine";
+  name: string;
+  status: string;
+  meta: string;
+  description: string;
+  logo: string;
+  href?: string;
+}
+
+const PILOT_PARTNERS: PilotPartner[] = [
+  {
+    id: "stelhacks",
+    name: "StelHacks",
+    status: "Real integration",
+    meta: "Hackathon judging",
+    description:
+      "Jury scorecards and community ballots stay time-lock encrypted until judging closes, then reveal together with verifiable evidence.",
+    logo: "/pilots/stelhacks/stelhacks-logo.png",
+    href: "https://github.com/emirykl/StelHacks",
+  },
+  {
+    id: "offer-hub",
+    name: "OFFER HUB",
+    status: "Real integration",
+    meta: "Freelancer proposals",
+    description:
+      "Price, timeline, and approach stay sealed until the shared deadline, then every proposal reveals together for client selection.",
+    logo: "/pilots/offer-hub/offer-hub.jpg",
+    href: "https://github.com/karagozemin/OFFER-HUB-Frontend/tree/feat/sub-rosa-sealed-proposals",
+  },
+  {
+    id: "octarine",
+    name: "Octarine",
+    status: "Planned pilot",
+    meta: "SCF #44 · RWA liquidity",
+    description:
+      "A planned sealed RFQ layer for RWA liquidity, keeping LP quotes private until the deadline before revealing them together for price selection.",
+    logo: "/pilots/octarine/octarine-logo.svg",
+  },
+];
+
+function PartnerCardContent({ partner }: { partner: PilotPartner }) {
+  return (
+    <>
+      <div className={`landing-partner-logo ${partner.id}`}>
+        <img src={partner.logo} alt={`${partner.name} logo`} />
+      </div>
+      <div className="landing-partner-card-body">
+        <div className="landing-partner-card-topline">
+          <span className={partner.href ? "real" : "planned"}>{partner.status}</span>
+          <small>{partner.meta}</small>
+        </div>
+        <h3>{partner.name}</h3>
+        <p>{partner.description}</p>
+        <span className={`landing-partner-card-cta ${partner.href ? "" : "static"}`}>
+          {partner.href ? "View integration" : "Partner workflow in design"}
+          {partner.href ? <span aria-hidden="true">↗</span> : null}
+        </span>
+      </div>
+    </>
+  );
+}
+
 export function LandingPage({
   onDemo,
   onCase,
@@ -205,6 +269,60 @@ export function LandingPage({
           their marketplace or product workflow.
         </p>
       </motion.section>
+
+      <section className="pilot-partners-section" aria-labelledby="pilot-partners-title">
+        <motion.div
+          className="pilot-partners-head"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={transition}
+        >
+          <div>
+            <span>Pilot partners</span>
+            <h2 id="pilot-partners-title">Sub Rosa in partner workflows.</h2>
+          </div>
+          <p>
+            Real integrations already use sealed coordination in production-shaped flows, while
+            the next pilot extends the same primitive to RWA liquidity.
+          </p>
+        </motion.div>
+
+        <motion.div
+          className="pilot-partners-grid"
+          variants={staggerParent}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-60px" }}
+        >
+          {PILOT_PARTNERS.map((partner) =>
+            partner.href ? (
+              <motion.a
+                key={partner.id}
+                className="landing-partner-card linked"
+                href={partner.href}
+                target="_blank"
+                rel="noreferrer"
+                variants={fadeUp}
+                transition={transition}
+                whileHover={reduce ? undefined : { y: -4 }}
+                whileTap={reduce ? undefined : { scale: 0.99 }}
+              >
+                <PartnerCardContent partner={partner} />
+              </motion.a>
+            ) : (
+              <motion.article
+                key={partner.id}
+                className="landing-partner-card"
+                variants={fadeUp}
+                transition={transition}
+              >
+                <PartnerCardContent partner={partner} />
+              </motion.article>
+            ),
+          )}
+        </motion.div>
+      </section>
 
       <section className="landing-cases-section">
         <motion.div
