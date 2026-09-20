@@ -53,7 +53,7 @@ const PILOT_PARTNERS: PilotPartner[] = [
   {
     id: "octarine",
     name: "Octarine",
-    status: "Planned pilot",
+    status: "Real Integration Process",
     meta: "SCF #44 · RWA liquidity",
     description:
       "A planned sealed RFQ layer for RWA liquidity, keeping LP quotes private until the deadline before revealing them together for price selection.",
