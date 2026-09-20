@@ -20,7 +20,7 @@ const staggerParent = {
 };
 
 interface PilotPartner {
-  id: "stelhacks" | "offer-hub" | "octarine";
+  id: "stelhacks" | "offer-hub" | "cosmos-pay" | "octarine";
   name: string;
   status: string;
   meta: string;
@@ -49,6 +49,16 @@ const PILOT_PARTNERS: PilotPartner[] = [
       "Price, timeline, and approach stay sealed until the shared deadline, then every proposal reveals together for client selection.",
     logo: "/pilots/offer-hub/offer-hub.jpg",
     href: "https://github.com/karagozemin/OFFER-HUB-Frontend/blob/feat/sub-rosa-sealed-proposals/src/features/sub-rosa/live/operations.ts#L64-L174",
+  },
+  {
+    id: "cosmos-pay",
+    name: "Cosmos Pay",
+    status: "Integration PR",
+    meta: "Private RFQs · SEP-7",
+    description:
+      "Cosmos Pay verifies Sub Rosa sealed-quote rounds, reveals provider proposals together, and hands the selected quote to its existing non-custodial payment-intent flow.",
+    logo: "/pilots/cosmos-pay/cosmos-pay-logo.png",
+    href: "https://github.com/CosmosPay/CosmosPay-Community-Server/pull/91",
   },
   {
     id: "octarine",
@@ -283,8 +293,8 @@ export function LandingPage({
             <h2 id="pilot-partners-title">Sub Rosa in partner workflows.</h2>
           </div>
           <p>
-            Real integrations already use sealed coordination in production-shaped flows, while
-            the next pilot extends the same primitive to RWA liquidity.
+            Real integrations use sealed coordination across judging, freelancer proposals, and
+            payments, while the next pilot extends the same primitive to RWA liquidity.
           </p>
         </motion.div>
 

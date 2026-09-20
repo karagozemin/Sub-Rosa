@@ -725,7 +725,7 @@
 
 .pilot-partners-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -788,6 +788,17 @@
 }
 
 .landing-partner-logo.offer-hub img {
+  width: 58%;
+  height: 58%;
+}
+
+.landing-partner-logo.cosmos-pay {
+  background:
+    radial-gradient(circle at 50% 44%, rgba(91, 108, 255, 0.2), transparent 54%),
+    #090b12;
+}
+
+.landing-partner-logo.cosmos-pay img {
   width: 58%;
   height: 58%;
 }
