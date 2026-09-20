@@ -38,7 +38,7 @@ const PILOT_PARTNERS: PilotPartner[] = [
     description:
       "Jury scorecards and community ballots stay time-lock encrypted until judging closes, then reveal together with verifiable evidence.",
     logo: "/pilots/stelhacks/stelhacks-logo.png",
-    href: "https://github.com/emirykl/StelHacks",
+    href: "https://github.com/emirykl/StelHacks/blob/main/frontend/lib/sealed-input.ts#L1-L49",
   },
   {
     id: "offer-hub",
@@ -48,7 +48,7 @@ const PILOT_PARTNERS: PilotPartner[] = [
     description:
       "Price, timeline, and approach stay sealed until the shared deadline, then every proposal reveals together for client selection.",
     logo: "/pilots/offer-hub/offer-hub.jpg",
-    href: "https://github.com/karagozemin/OFFER-HUB-Frontend/tree/feat/sub-rosa-sealed-proposals",
+    href: "https://github.com/karagozemin/OFFER-HUB-Frontend/blob/feat/sub-rosa-sealed-proposals/src/features/sub-rosa/live/operations.ts#L64-L174",
   },
   {
     id: "octarine",
