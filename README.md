@@ -302,9 +302,11 @@ verify the receipt and query the configured Stellar contract directly.
 | Network | Stellar public network (Mainnet) |
 | WASM hash | `2c7bc6b4c91940ac185df38a3d0a8532b555140d818df94f03f894e5952ebf42` |
 | SDK | `network: "mainnet"` selects this Core v2 deployment |
+| Capped lifecycle proof | Round [`1`](https://stellar.expert/explorer/public/contract/CDQOFNCJE5Z4ZZL76DU5652FOUKJVEIZWHFGCZVWH63UYBGPSZIPC325) - `0.01 XLM` lot, `0.05 XLM` winning bid, `0.10 XLM` fixed escrow, settled with atomic `0.05 XLM` surplus refund |
+| Receipt evidence | [`instawards-mainnet-auction-1.json`](./apps/web/public/instawards/receipts/instawards-mainnet-auction-1.json) |
 
-The mainnet deployment is public and capped in the repository's deployment
-workflow. It has not received an independent funds-handling audit. Use explicit
+The mainnet deployment and capped Core v2 lifecycle proof are public. The
+contract has not received an independent funds-handling audit. Use explicit
 value and participant limits, monitored keepers, and a reviewed contract/hash
 before any production or uncapped integration.
 

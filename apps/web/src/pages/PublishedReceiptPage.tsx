@@ -27,6 +27,7 @@ interface LedgerCheck {
 }
 
 const TESTNET_NATIVE_XLM_SAC = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+const MAINNET_NATIVE_XLM_SAC = "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
 
 const phaseLabels: Record<PublishedAuctionEvidence["transactions"][number]["phase"], string> = {
   create_round: "Create round",
@@ -108,7 +109,7 @@ export function PublishedReceiptPage({ slug, goHome }: PublishedReceiptPageProps
   }, [slug]);
 
   const verification = useMemo(
-    () => evidence ? verifyPublishedAuctionEvidence(evidence, { minimumBidders: 3 }) : null,
+    () => evidence ? verifyPublishedAuctionEvidence(evidence) : null,
     [evidence],
   );
 
@@ -132,7 +133,11 @@ export function PublishedReceiptPage({ slug, goHome }: PublishedReceiptPageProps
 
   const receipt = evidence.receipt;
   const contractUrl = contractExplorerUrl(evidence.network, evidence.contractId);
-  const paymentUnit = evidence.network === "testnet" && receipt.paymentAsset === TESTNET_NATIVE_XLM_SAC
+  const paymentUnit = (
+    evidence.network === "testnet" && receipt.paymentAsset === TESTNET_NATIVE_XLM_SAC
+  ) || (
+    evidence.network === "mainnet" && receipt.paymentAsset === MAINNET_NATIVE_XLM_SAC
+  )
     ? "XLM"
     : "asset units";
 

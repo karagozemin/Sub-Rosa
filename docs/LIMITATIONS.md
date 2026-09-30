@@ -11,10 +11,10 @@ fallbacks.
 | Multi-agent + x402 + UI trace | **Testnet** | `pnpm agents:e2e` |
 | Primitive v1 deploy + settle smoke | **Mainnet** | Historical proof; verify with `pnpm mainnet:legacy:verify` |
 | Optional legacy v1 micro commit | **Mainnet** | `pnpm mainnet:legacy:micro` (dry-run default; tiny XLM only) |
-| Core v2 deployment | **Mainnet** | Official capped deployment verified; lifecycle smoke remains a separate value-moving step |
+| Core v2 capped lifecycle | **Mainnet** | Round `1`: create, commit, Drand reveal, clear, atomic settle/surplus refund, and verified receipt |
 
 The historical v1 mainnet smoke did **not** replay 700 / 459 USDC demo
-amounts; it used **1 XLM bid / 5 XLM escrow** on native XLM SAC. The prepared
+amounts; it used **1 XLM bid / 5 XLM escrow** on native XLM SAC. The completed
 Core v2 capped smoke uses **0.01 XLM lot / 0.05 XLM bid / 0.10 XLM escrow**.
 
 ## Off-chain enforcement
