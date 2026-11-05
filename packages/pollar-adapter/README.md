@@ -9,12 +9,12 @@ existing Sub Rosa SDK. The first release target is deliberately narrow:
 - self-paid transactions (`skipSponsorship: true`)
 - no changes to Pollar core and no automatic activation
 
-The package metadata is prepared for a public `0.1.0` release, but the package
-has not been published. A real Pollar account completed the five-write
-ReceiptOnly lifecycle and produced the public Round 33 evidence recorded in
-`docs/SCF46_POLLAR_INTEGRATION_EVIDENCE.md`. A separate Pollar-signed non-source
-authorization created Round 35 on testnet and verified the standalone
-`signAuthEntry` path. Unit tests are not presented as integration proof.
+Version `0.1.0` is published with public npm access. A real Pollar account
+completed the five-write ReceiptOnly lifecycle and produced the public Round 33
+evidence recorded in `docs/SCF46_POLLAR_INTEGRATION_EVIDENCE.md`. A separate
+Pollar-signed non-source authorization created Round 35 on testnet and verified
+the standalone `signAuthEntry` path. Unit tests are not presented as integration
+proof.
 
 ## Install
 

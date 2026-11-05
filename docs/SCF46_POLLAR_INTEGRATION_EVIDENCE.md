@@ -5,13 +5,14 @@ Last updated: 2026-11-06
 ## Current evidence level
 
 **Live Pollar transaction signing and standalone Soroban auth-entry signing are
-both verified on Stellar testnet; the public package is release-prepared but not
-published pending explicit approval.**
+both verified on Stellar testnet; `@sub-rosa/pollar-adapter@0.1.0` is published
+with public npm access.**
 
 - Initial implementation commit: https://github.com/karagozemin/Sub-Rosa/commit/03cb8ec
 - Merged implementation and review: https://github.com/karagozemin/Sub-Rosa/pull/1
 - Merge commit: https://github.com/karagozemin/Sub-Rosa/commit/75868f313e757f1070660744fdd3e2270cd91b28
-- npm package: `@sub-rosa/pollar-adapter@0.1.0`, prepared but not published.
+- npm package: https://www.npmjs.com/package/@sub-rosa/pollar-adapter/v/0.1.0
+- release tag: https://github.com/karagozemin/Sub-Rosa/releases/tag/pollar-adapter-v0.1.0
 
 This document deliberately distinguishes implementation from validation,
 publication, listing, and adoption. A local unit test is not a Pollar-signed
@@ -24,7 +25,7 @@ testnet transaction.
 | Working local adapter | Implemented | `packages/pollar-adapter`, real `@pollar/core@0.12.0` and `@sub-rosa/sdk` types, automated tests and pack validation. |
 | Real Pollar testnet lifecycle | Verified | Round 33 completed through the interactive runner with the authenticated READY Pollar G-address below. All five hashes independently resolve to successful Stellar testnet transactions. |
 | Standalone `signAuthEntry` | Verified | Pollar signed the non-source wallet authorization, a distinct transient account signed the envelope, enforce-mode simulation passed, and Round 35 succeeded in ledger 5579176. |
-| Public community package | Release-prepared | Version `0.1.0`, public access metadata, MIT license, exports and tarball are validated; `npm publish` still requires explicit authorization. |
+| Public community package | Published | Version `0.1.0` is public on npm; registry metadata, tarball integrity, clean installation and both documented exports were verified after publication. |
 | Pollar developer listing | Pending | Alejandro's proposed listing must be linked after release. |
 | Independent production adoption | Not claimed | A testnet adapter is not customer adoption or economic volume. |
 
@@ -41,6 +42,25 @@ testnet transaction.
   rejected in this release.
 - Optional, application-selected integration through peer dependencies; no
   changes to Pollar core or automatic activation in existing applications.
+
+## Published package verification
+
+- Package: `@sub-rosa/pollar-adapter@0.1.0`
+- npm dist-tag: `latest -> 0.1.0`
+- Public tarball: `https://registry.npmjs.org/@sub-rosa/pollar-adapter/-/pollar-adapter-0.1.0.tgz`
+- Tarball SHA-512 integrity:
+  `sha512-g0xBtwi6wRVLA+3sB+A+sPzII1BZlqUpZNhuFoFbvHWs9C3o6ZZPYLJpg3eCm3NHQlzhEEuxEpW1N5Dojl2NIw==`
+- Clean install by package name succeeded with Pollar `0.12.0` and Sub Rosa SDK
+  `0.3.2`; both the root adapter export and `./testnet` export imported
+  successfully.
+- The 18-file public tarball contains compiled JavaScript/types, README,
+  compatibility notes, changelog, MIT license and the testnet example. It does
+  not contain local environment files, Pollar credentials, DPoP/session data,
+  sponsor secrets or raw signed payloads.
+- A post-install npm audit reports inherited advisories through the current
+  Stellar SDK dependency chain (`axios` and `toml`) and reports no automatic
+  fix. This is recorded as an upstream dependency follow-up, not presented as a
+  new adapter-code finding or silently omitted.
 
 ## Developer value
 
@@ -249,13 +269,13 @@ transient sponsor submitted nothing. Pollar subsequently deployed its decoder
 fix, after which the fresh Round 35 proof above succeeded. Round 33 and its five
 original transaction hashes remain unchanged.
 
-## Remaining release gates
+## Remaining follow-up
 
-1. Obtain explicit approval for the final package name, version and publish
-   command, then authenticate an npm maintainer with access to the `@sub-rosa`
-   scope. Package validation is complete; no registry publication has occurred.
-2. Obtain Pollar's technical acceptance/listing URL. Alejandro's intent is not
+1. Obtain Pollar's technical acceptance/listing URL. Alejandro's intent is not
    itself evidence that the adapter has been listed.
+2. Track fixes for the inherited Stellar SDK dependency advisories noted above
+   and update through a separately tested patch release when compatible fixes
+   are available.
 
 ## SCF wording supported by the live proof
 

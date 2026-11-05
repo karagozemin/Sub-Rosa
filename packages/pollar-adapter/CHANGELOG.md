@@ -28,5 +28,5 @@
   operation result codes instead of reporting the UI's generic `UNKNOWN` fallback.
 
 Both live transaction signing and standalone auth-entry signing are verified.
-The package metadata and tarball are prepared; registry publication remains
-pending explicit release authorization.
+Published with public npm access as `@sub-rosa/pollar-adapter@0.1.0`; source is
+tagged `pollar-adapter-v0.1.0`.
