@@ -4,7 +4,7 @@ Last updated: 2026-11-05
 
 ## Current evidence level
 
-**Working local adapter; live Pollar-signed testnet proof pending credentials.**
+**Live Pollar-signed ReceiptOnly testnet proof verified; package publication pending.**
 
 - Implementation commit: https://github.com/karagozemin/Sub-Rosa/commit/03cb8ec
 - Review PR: https://github.com/karagozemin/Sub-Rosa/pull/1
@@ -20,8 +20,8 @@ testnet transaction.
 | Proposed integration | Confirmed | Alejandro requested an optional community adapter maintained in the Sub Rosa repo/npm scope. Preserve the original message before public use. |
 | Arbitrary Soroban SDK capability | Confirmed in writing | User reports Alejandro confirmed with Oscar that Pollar supports arbitrary Soroban contract transaction signing without restrictions. Preserve the original confirmation before quoting it publicly. |
 | Working local adapter | Implemented | `packages/pollar-adapter`, real `@pollar/core@0.12.0` and `@sub-rosa/sdk` types, automated tests and pack validation. |
-| Real Pollar testnet lifecycle | Pending | Requires an authenticated READY Pollar G-address session; no secret-key or alternate-wallet fallback is accepted. |
-| Public community package | Pending | Package remains `private: true` until the live proof succeeds. |
+| Real Pollar testnet lifecycle | Verified | Round 33 completed through the interactive runner with the authenticated READY Pollar G-address below. All five hashes independently resolve to successful Stellar testnet transactions. |
+| Public community package | Pending | Package remains `private: true` pending explicit release authorization and final pack validation. |
 | Pollar developer listing | Pending | Alejandro's proposed listing must be linked after release. |
 | Independent production adoption | Not claimed | A testnet adapter is not customer adoption or economic volume. |
 
@@ -66,45 +66,52 @@ Record final command output after the branch is committed:
 
 ## Live testnet proof
 
-The browser harness requires a Pollar testnet publishable key and interactive
-user login, then produces a downloadable public JSON evidence object.
-Do not populate this table from mock tests or a secret-key-signed Sub Rosa run.
-The attempted CLI live run stopped before network submission because no
-authenticated Pollar session was present. An interactive local browser flow is
-now available at `examples/pollar-e2e`; the remaining step is user-supplied
-Pollar publishable app configuration plus OTP/OAuth/wallet approval.
+On 2026-11-05 the local browser harness authenticated a real, server-verified
+Pollar testnet session with an internally-custodied classic G-address wallet in
+`READY` state. The same in-memory `PollarClient` signed all five Sub Rosa writes;
+there was no secret-key signer or alternate-wallet fallback. The user explicitly
+approved each Pollar signing prompt. Session tokens, DPoP keys, and signing
+material were not rendered, logged, exported, or committed.
 
-| Operation | Stellar testnet transaction hash | RPC status |
-|---|---|---|
-| Create ReceiptOnly round | Pending real Pollar session | Pending |
-| Sealed commit | Pending real Pollar session | Pending |
-| Open reveal | Pending real Pollar session | Pending |
-| Reveal | Pending real Pollar session | Pending |
-| Clear | Pending real Pollar session | Pending |
+| Operation | Stellar testnet transaction | Ledger | RPC status |
+|---|---|---:|---|
+| Create ReceiptOnly round | [`8a30b709e69a77135f88fcb2ca23a29e13d8842f79035ef7957cb603a0627621`](https://stellar.expert/explorer/testnet/tx/8a30b709e69a77135f88fcb2ca23a29e13d8842f79035ef7957cb603a0627621) | 5564495 | SUCCESS |
+| Sealed commit | [`4ca02b8eba5c92981e4d45f40a37f306b63898fb6b1f7b11ce9a0072d4ce2a99`](https://stellar.expert/explorer/testnet/tx/4ca02b8eba5c92981e4d45f40a37f306b63898fb6b1f7b11ce9a0072d4ce2a99) | 5564498 | SUCCESS |
+| Open reveal | [`193a710bab9c91599ce7f9775126853eec7745097a65438ccff3ce8725e0216e`](https://stellar.expert/explorer/testnet/tx/193a710bab9c91599ce7f9775126853eec7745097a65438ccff3ce8725e0216e) | 5564536 | SUCCESS |
+| Reveal | [`05015e4383d4120125260c863c665edd5432f92efed8ca9348dcf29c3d2ca770`](https://stellar.expert/explorer/testnet/tx/05015e4383d4120125260c863c665edd5432f92efed8ca9348dcf29c3d2ca770) | 5564546 | SUCCESS |
+| Clear | [`6dd6187af612e1ee5bab8e882ab8bb0d0a905bc94428fc03998e441bc1703a51`](https://stellar.expert/explorer/testnet/tx/6dd6187af612e1ee5bab8e882ab8bb0d0a905bc94428fc03998e441bc1703a51) | 5564579 | SUCCESS |
 
-- Contract ID: pending live run
-- Round ID: pending live run
-- Pollar signer G-address: pending live run
-- Canonical receipt SHA-256: pending live run
-- `verifyReceiptV2(...).valid`: pending live run
-- Live `signAuthEntry` proof: pending a flow that actually requests a non-source
-  Soroban authorization entry; the direct-source lifecycle primarily proves
-  arbitrary Soroban transaction signing.
+- Contract ID: `CCOVGOQQZJKZ2R55GRWBLTJTGBAMSHXZVN3ICPG3WRVMLMM6RHISC5OV`
+- Round ID: `33`
+- Pollar signer G-address: `GCGHLZRGDAOFKUWPCKOG3OIC62ZEHAFM6AKIWJGRLRIX7OIAJT36AGL3`
+- Canonical receipt SHA-256 produced by the harness:
+  `136dd6ef4e19a5a44cb7b45c8d59d4cdc6c759e55c6f7b0ce45ca60b813536e6`
+- `verifyReceiptV2(...).valid`: `true`
+- Independently re-exported on-chain state: `ReceiptOnly`, `Settled`, enforced
+  allowlist policy, fixed escrow `0`, signer is both operator and sole bidder.
+- Independent receipt verification: valid with zero issues.
+
+Independent checks used Stellar testnet RPC and Horizon rather than trusting the
+browser display. Every hash has the Pollar G-address as its transaction source,
+contains exactly one successful `invoke_host_function` operation, targets the
+contract above, and decodes respectively to `create_partner_round_v2`,
+`commit_v2`, `open_reveal_v2`, `reveal_v2`, and `clear_v2`.
+
+This direct-source lifecycle proves Pollar `signTx` compatibility for arbitrary
+Sub Rosa Soroban transactions. It does not invoke `signAuthEntry`; a separate
+non-source authorization flow is still required before claiming live
+`signAuthEntry` proof.
 
 ## Remaining release gates
 
-1. Provide an authenticated Pollar testnet application/session without storing
-   credentials in the repository.
-2. Fund the Pollar G-address with testnet XLM if it is not sponsored.
-3. Run the full harness and independently check every hash on Stellar testnet.
-4. Exercise a real non-source Soroban authorization entry if that capability is
+1. Exercise a real non-source Soroban authorization entry if that capability is
    included in the first public claim.
-5. Add the resulting public evidence, remove `private: true`, and repeat package
-   validation before npm publication.
-6. Obtain Pollar's technical acceptance/listing URL. Alejandro's intent is not
+2. Obtain explicit release authorization, remove `private: true`, and repeat
+   package validation before npm publication.
+3. Obtain Pollar's technical acceptance/listing URL. Alejandro's intent is not
    itself evidence that the adapter has been listed.
 
-## SCF wording after the live proof only
+## SCF wording supported by the live proof
 
 > Sub Rosa maintains an optional Pollar community adapter that lets a classic
 > Pollar Stellar wallet execute Sub Rosa ReceiptOnly sealed rounds. The public
