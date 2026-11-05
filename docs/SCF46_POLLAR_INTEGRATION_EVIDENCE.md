@@ -10,6 +10,7 @@ published pending explicit approval.**
 
 - Initial implementation commit: https://github.com/karagozemin/Sub-Rosa/commit/03cb8ec
 - Merged implementation and review: https://github.com/karagozemin/Sub-Rosa/pull/1
+- Merge commit: https://github.com/karagozemin/Sub-Rosa/commit/75868f313e757f1070660744fdd3e2270cd91b28
 - npm package: `@sub-rosa/pollar-adapter@0.1.0`, prepared but not published.
 
 This document deliberately distinguishes implementation from validation,
@@ -26,6 +27,20 @@ testnet transaction.
 | Public community package | Release-prepared | Version `0.1.0`, public access metadata, MIT license, exports and tarball are validated; `npm publish` still requires explicit authorization. |
 | Pollar developer listing | Pending | Alejandro's proposed listing must be linked after release. |
 | Independent production adoption | Not claimed | A testnet adapter is not customer adoption or economic volume. |
+
+## Supported `0.1.0` scope
+
+- Stellar testnet only; mainnet is rejected.
+- Ready classic Pollar `G...` wallets only; smart/passkey `C...` wallets are
+  rejected.
+- Sub Rosa ReceiptOnly rounds with zero escrow only; Auction/escrow flows are
+  rejected.
+- Pollar `signTx` and standalone non-source `signAuthEntry` callbacks, with an
+  exact application contract/function allowlist for auth-entry signing.
+- Self-paid transaction envelopes only; fee-bump/sponsored envelopes are
+  rejected in this release.
+- Optional, application-selected integration through peer dependencies; no
+  changes to Pollar core or automatic activation in existing applications.
 
 ## Developer value
 
@@ -66,7 +81,7 @@ Record final command output after the branch is committed:
 | `pnpm --filter @sub-rosa/pollar-adapter test` | PASS — 19/19 |
 | `pnpm --filter @sub-rosa/pollar-adapter build` | PASS |
 | `pnpm pollar-e2e:build` | PASS — interactive browser runner |
-| `npm pack --dry-run` from adapter package | PASS — release manifest validated |
+| `npm publish --dry-run --access public` from adapter package | PASS — 18-file public release manifest validated |
 | `pnpm --filter @sub-rosa/sdk test` | PASS — 204/204 |
 | `pnpm -r --if-present test` | PASS — all 11 test-bearing workspace projects |
 
