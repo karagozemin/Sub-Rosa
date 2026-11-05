@@ -1,0 +1,40 @@
+{
+  "evidenceVersion": 1,
+  "generatedAt": "2026-11-05T22:58:41Z",
+  "network": "testnet",
+  "wallet": "GCGHLZRGDAOFKUWPCKOG3OIC62ZEHAFM6AKIWJGRLRIX7OIAJT36AGL3",
+  "sponsor": "GDYWMF5WUQASUEXU3JVD7AAQERF4QJMAWUKSU4B3F7PBJMFSAKKDUJSI",
+  "contractId": "CCOVGOQQZJKZ2R55GRWBLTJTGBAMSHXZVN3ICPG3WRVMLMM6RHISC5OV",
+  "function": "create_partner_round_v2",
+  "roundId": "35",
+  "latestLedgerAtSigning": 5579170,
+  "validUntilLedger": 5579250,
+  "authNonce": "8843141292032622291",
+  "signerVerified": true,
+  "invocationVerified": true,
+  "envelopeSignerVerified": true,
+  "enforcedSimulationVerified": true,
+  "transaction": {
+    "hash": "a1c56b0c2d206c7aafd0d4b16e46596f4ac6e4f05ea90c565787c565c6810fda",
+    "status": "SUCCESS",
+    "resultCode": "txSuccess",
+    "ledger": 5579176,
+    "sequence": "23962352688824321",
+    "fee": "1210615",
+    "submittedAtLedger": 5579175,
+    "explorerUrl": "https://stellar.expert/explorer/testnet/tx/a1c56b0c2d206c7aafd0d4b16e46596f4ac6e4f05ea90c565787c565c6810fda"
+  },
+  "independentVerification": {
+    "hashMatchesEnvelope": true,
+    "sourceMatchesSponsor": true,
+    "operationCount": 1,
+    "operationType": "invokeHostFunction",
+    "authEntryCount": 1,
+    "authAddressMatchesWallet": true,
+    "authPublicKeyMatchesWallet": true,
+    "authSignatureValid": true,
+    "envelopeSignatureValid": true,
+    "sorobanTransactionDataPresent": true,
+    "returnRoundId": "35"
+  }
+}

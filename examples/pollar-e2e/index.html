@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>Pollar × Sub Rosa E2E</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">LOCAL TESTNET VERIFICATION</p>
+        <h1>Pollar × Sub Rosa</h1>
+        <p class="lede">Authenticate with a real Pollar G-wallet, run the ReceiptOnly lifecycle, and verify a standalone Soroban authorization entry.</p>
+      </header>
+
+      <section id="config-card" class="card">
+        <div class="card-heading"><span>01</span><h2>Configuration</h2></div>
+        <p id="config-status">Checking local configuration…</p>
+        <p class="hint">DPoP keys and session tokens remain inside this browser origin. This page never renders or exports them.</p>
+      </section>
+
+      <section class="card">
+        <div class="card-heading"><span>02</span><h2>Authenticate</h2></div>
+        <div class="grid two">
+          <label>Email <input id="email" type="email" autocomplete="email" placeholder="you@example.com" /></label>
+          <button id="email-login" type="button">Send OTP</button>
+          <label>OTP <input id="otp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="12" placeholder="123456" /></label>
+          <button id="verify-otp" type="button">Verify OTP</button>
+        </div>
+        <div class="button-row">
+          <button id="google-login" type="button" class="secondary">Google</button>
+          <button id="github-login" type="button" class="secondary">GitHub</button>
+          <button id="freighter-login" type="button" class="secondary">Freighter</button>
+          <button id="albedo-login" type="button" class="secondary">Albedo</button>
+          <button id="logout" type="button" class="ghost">Log out</button>
+        </div>
+        <dl class="status-grid">
+          <div><dt>Auth state</dt><dd id="auth-state">initializing</dd></div>
+          <div><dt>Network</dt><dd id="network-state">testnet</dd></div>
+          <div><dt>Wallet</dt><dd id="wallet-address">—</dd></div>
+          <div><dt>Custody</dt><dd id="wallet-custody">—</dd></div>
+          <div><dt>Provisioning</dt><dd id="wallet-provisioning">—</dd></div>
+          <div><dt>Testnet XLM</dt><dd id="xlm-balance">—</dd></div>
+        </dl>
+        <button id="refresh-wallet" type="button" class="ghost">Refresh wallet state</button>
+      </section>
+
+      <section id="confirmation-card" class="card attention" hidden>
+        <div class="card-heading"><span>!</span><h2>Signature approval required</h2></div>
+        <div id="confirmations"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-heading"><span>03</span><h2>Run ReceiptOnly lifecycle</h2></div>
+        <p>Five testnet writes: create round, sealed commit, open reveal, reveal, and clear. Each signature requires explicit approval above.</p>
+        <button id="run-e2e" type="button" disabled>Run real Pollar E2E</button>
+        <div class="progress"><span id="progress-stage">idle</span><p id="progress-message">Authenticate a ready G-address to begin.</p></div>
+        <div id="error-panel" class="error" hidden></div>
+      </section>
+
+      <section id="evidence-card" class="card" hidden>
+        <div class="card-heading"><span>04</span><h2>Verified public evidence</h2></div>
+        <div id="evidence"></div>
+        <button id="download-evidence" type="button">Download evidence JSON</button>
+      </section>
+
+      <section class="card">
+        <div class="card-heading"><span>05</span><h2>Run standalone signAuthEntry proof</h2></div>
+        <p>A Friendbot-funded in-memory account pays the testnet fee. The Pollar wallet separately authorizes <code>create_partner_round_v2</code> as the non-source operator.</p>
+        <p class="hint">The sponsor secret never leaves memory and cannot authorize for the Pollar wallet. Pollar must allow testnet contract <code>CCOVGOQQZJKZ2R55GRWBLTJTGBAMSHXZVN3ICPG3WRVMLMM6RHISC5OV</code>, function <code>create_partner_round_v2</code>, for this application. No wildcard is needed.</p>
+        <button id="run-auth-entry" type="button" disabled>Run real Pollar signAuthEntry test</button>
+        <div class="progress"><span id="auth-entry-stage">idle</span><p id="auth-entry-message">Authenticate a ready G-address to begin.</p></div>
+      </section>
+
+      <section id="auth-entry-evidence-card" class="card" hidden>
+        <div class="card-heading"><span>06</span><h2>Verified auth-entry evidence</h2></div>
+        <div id="auth-entry-evidence"></div>
+        <button id="download-auth-entry-evidence" type="button">Download auth-entry evidence JSON</button>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

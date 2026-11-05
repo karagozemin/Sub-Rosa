@@ -1,0 +1,27 @@
+{
+  "name": "@sub-rosa/pollar-e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pollar/core": "0.12.0",
+    "@sub-rosa/pollar-adapter": "workspace:*",
+    "@sub-rosa/sdk": "workspace:^",
+    "buffer": "6.0.3",
+    "crypto-browserify": "3.12.1",
+    "events": "3.3.0",
+    "process": "0.11.10",
+    "stream-browserify": "3.0.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-inject": "^5.0.5",
+    "@types/node": "^25.9.1",
+    "typescript": "^6.0.3",
+    "vite": "^6.3.5"
+  }
+}
