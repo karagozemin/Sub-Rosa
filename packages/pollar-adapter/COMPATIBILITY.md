@@ -39,3 +39,7 @@ partner evidence. Actual interoperability is still release-gated on a READY,
 authenticated Pollar testnet session completing the reproducible lifecycle.
 No such session or Pollar API credential is present in this workspace, so no
 transaction hash or receipt is claimed yet.
+
+The repository includes `examples/pollar-e2e`, which uses Pollar's real browser
+session, DPoP key manager, email/OAuth/classic-wallet login and confirmation
+callbacks. It never serializes the client or exports its session material.

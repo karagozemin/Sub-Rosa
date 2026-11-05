@@ -20,6 +20,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./testnet": {
+      "types": "./dist/testnet-lifecycle.d.ts",
+      "import": "./dist/testnet-lifecycle.js"
     }
   },
   "files": [

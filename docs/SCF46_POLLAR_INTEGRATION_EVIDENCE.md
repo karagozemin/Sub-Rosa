@@ -43,6 +43,8 @@ creates bias. It is not intended for ordinary instant payments or swaps.
 - Live-ledger authorization expiry and invocation/address integrity checks.
 - Explicit handling for `cosign_pending` and backend policy failures.
 - Real-SDK ReceiptOnly lifecycle harness with no fallback signer.
+- Local browser authentication runner using Pollar email OTP, Google/GitHub, or
+  built-in classic-wallet login. The same in-memory client signs the lifecycle.
 
 Sub Rosa's contract, Drand/tlock implementation, lifecycle, receipt format, and
 receipt verifier already existed and were not reimplemented for this adapter.
@@ -57,17 +59,20 @@ Record final command output after the branch is committed:
 | `pnpm --filter @sub-rosa/pollar-adapter typecheck` | PASS |
 | `pnpm --filter @sub-rosa/pollar-adapter test` | PASS — 14/14 |
 | `pnpm --filter @sub-rosa/pollar-adapter build` | PASS |
+| `pnpm pollar-e2e:build` | PASS — interactive browser runner |
 | `npm pack --dry-run` from adapter package | PASS — release manifest validated |
 | `pnpm --filter @sub-rosa/sdk test` | PASS — 204/204 |
 | `pnpm -r --if-present test` | PASS — all 11 test-bearing workspace projects |
 
 ## Live testnet proof
 
-The harness requires a real Pollar session and prints a JSON evidence object.
+The browser harness requires a Pollar testnet publishable key and interactive
+user login, then produces a downloadable public JSON evidence object.
 Do not populate this table from mock tests or a secret-key-signed Sub Rosa run.
-The attempted live run stopped before network submission because no
-`POLLAR_SESSION_MODULE` or authenticated Pollar session is present in this
-workspace. This is the only current E2E execution blocker.
+The attempted CLI live run stopped before network submission because no
+authenticated Pollar session was present. An interactive local browser flow is
+now available at `examples/pollar-e2e`; the remaining step is user-supplied
+Pollar publishable app configuration plus OTP/OAuth/wallet approval.
 
 | Operation | Stellar testnet transaction hash | RPC status |
 |---|---|---|

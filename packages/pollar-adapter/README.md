@@ -71,10 +71,13 @@ the release criterion.
 
 ## Live ReceiptOnly proof
 
-The reproducible harness is
-[`examples/receipt-only.testnet.ts`](./examples/receipt-only.testnet.ts). It
-requires a real, already-authenticated `PollarClient` exported from a local
-untracked module:
+The recommended interactive runner is the repository's
+[`examples/pollar-e2e`](../../examples/pollar-e2e) browser app. It performs
+real Pollar email/OAuth/wallet login and passes that same in-memory client to
+the lifecycle while showing Pollar's explicit signature prompts.
+
+Hosts that already persist a browser-compatible Pollar session can also use
+[`examples/receipt-only.testnet.ts`](./examples/receipt-only.testnet.ts):
 
 ```bash
 POLLAR_SESSION_MODULE=/absolute/path/to/pollar-session.mjs \

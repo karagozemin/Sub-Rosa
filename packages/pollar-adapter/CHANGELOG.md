@@ -9,6 +9,8 @@
 - Handle wallet provisioning, network mismatch, fee bump, manual co-sign and
   Pollar policy errors explicitly.
 - Add a real-Pollar ReceiptOnly lifecycle harness and release evidence template.
+- Add a browser-safe `./testnet` lifecycle export and a local interactive Pollar
+  OTP/OAuth/classic-wallet runner with explicit signature approval.
 
 Release remains blocked until the real Pollar-signed testnet lifecycle produces
 public transaction hashes and a verified canonical receipt.

@@ -33,6 +33,8 @@
     "pollar-adapter:test": "pnpm --filter @sub-rosa/pollar-adapter test",
     "pollar-adapter:typecheck": "pnpm --filter @sub-rosa/pollar-adapter typecheck",
     "pollar-adapter:build": "pnpm --filter @sub-rosa/pollar-adapter build",
+    "pollar-e2e:dev": "pnpm --filter @sub-rosa/pollar-e2e dev",
+    "pollar-e2e:build": "pnpm --filter @sub-rosa/pollar-e2e build",
     "packages:build": "pnpm --filter @sub-rosa/round-bindings build && pnpm --filter @sub-rosa/tlock build && pnpm --filter @sub-rosa/sdk build && pnpm --filter @sub-rosa/pollar-adapter build",
     "packages:pack": "node scripts/verify-public-packages.mjs",
     "packages:publish": "node scripts/publish-public-packages.mjs",

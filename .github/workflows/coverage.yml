@@ -31,4 +31,4 @@ jobs:
         run: pnpm coverage:test
 
       - name: Typecheck and test Pollar adapter
-        run: pnpm pollar-adapter:typecheck && pnpm pollar-adapter:test
+        run: pnpm pollar-adapter:typecheck && pnpm pollar-adapter:test && pnpm pollar-e2e:build
