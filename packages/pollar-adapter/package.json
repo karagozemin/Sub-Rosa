@@ -1,7 +1,6 @@
 {
   "name": "@sub-rosa/pollar-adapter",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Optional Pollar wallet signer bridge for Sub Rosa ReceiptOnly rounds on Stellar testnet.",
   "license": "MIT",
@@ -42,7 +41,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "prepack": "pnpm run build",
+    "prepack": "npm run build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --import tsx --test src/index.test.ts",
     "test:e2e": "tsx examples/receipt-only.testnet.ts"

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 — unreleased
+## 0.1.0 — 2026-11-06
 
 - Add an optional Pollar 0.12 signer bridge for Sub Rosa SDK 0.3.x.
 - Enforce testnet, classic G-address, self-paid and ReceiptOnly boundaries.
@@ -28,5 +28,5 @@
   operation result codes instead of reporting the UI's generic `UNKNOWN` fallback.
 
 Both live transaction signing and standalone auth-entry signing are verified.
-Publication remains blocked pending explicit release authorization and removal
-of `private: true`.
+The package metadata and tarball are prepared; registry publication remains
+pending explicit release authorization.

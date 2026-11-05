@@ -5,11 +5,12 @@ Last updated: 2026-11-06
 ## Current evidence level
 
 **Live Pollar transaction signing and standalone Soroban auth-entry signing are
-both verified on Stellar testnet; package publication pending approval.**
+both verified on Stellar testnet; the public package is release-prepared but not
+published pending explicit approval.**
 
-- Implementation commit: https://github.com/karagozemin/Sub-Rosa/commit/03cb8ec
-- Review PR: https://github.com/karagozemin/Sub-Rosa/pull/1
-- npm package: not published; the package remains `private: true`.
+- Initial implementation commit: https://github.com/karagozemin/Sub-Rosa/commit/03cb8ec
+- Merged implementation and review: https://github.com/karagozemin/Sub-Rosa/pull/1
+- npm package: `@sub-rosa/pollar-adapter@0.1.0`, prepared but not published.
 
 This document deliberately distinguishes implementation from validation,
 publication, listing, and adoption. A local unit test is not a Pollar-signed
@@ -22,7 +23,7 @@ testnet transaction.
 | Working local adapter | Implemented | `packages/pollar-adapter`, real `@pollar/core@0.12.0` and `@sub-rosa/sdk` types, automated tests and pack validation. |
 | Real Pollar testnet lifecycle | Verified | Round 33 completed through the interactive runner with the authenticated READY Pollar G-address below. All five hashes independently resolve to successful Stellar testnet transactions. |
 | Standalone `signAuthEntry` | Verified | Pollar signed the non-source wallet authorization, a distinct transient account signed the envelope, enforce-mode simulation passed, and Round 35 succeeded in ledger 5579176. |
-| Public community package | Pending | Package remains `private: true` pending explicit release authorization and final pack validation. |
+| Public community package | Release-prepared | Version `0.1.0`, public access metadata, MIT license, exports and tarball are validated; `npm publish` still requires explicit authorization. |
 | Pollar developer listing | Pending | Alejandro's proposed listing must be linked after release. |
 | Independent production adoption | Not claimed | A testnet adapter is not customer adoption or economic volume. |
 
@@ -235,8 +236,9 @@ original transaction hashes remain unchanged.
 
 ## Remaining release gates
 
-1. Obtain explicit release authorization, remove `private: true`, and repeat
-   package validation before npm publication.
+1. Obtain explicit approval for the final package name, version and publish
+   command, then authenticate an npm maintainer with access to the `@sub-rosa`
+   scope. Package validation is complete; no registry publication has occurred.
 2. Obtain Pollar's technical acceptance/listing URL. Alejandro's intent is not
    itself evidence that the adapter has been listed.
 
