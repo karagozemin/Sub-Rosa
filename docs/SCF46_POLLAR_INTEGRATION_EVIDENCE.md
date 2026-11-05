@@ -21,7 +21,7 @@ testnet transaction.
 | Arbitrary Soroban SDK capability | Confirmed in writing | User reports Alejandro confirmed with Oscar that Pollar supports arbitrary Soroban contract transaction signing without restrictions. Preserve the original confirmation before quoting it publicly. |
 | Working local adapter | Implemented | `packages/pollar-adapter`, real `@pollar/core@0.12.0` and `@sub-rosa/sdk` types, automated tests and pack validation. |
 | Real Pollar testnet lifecycle | Verified | Round 33 completed through the interactive runner with the authenticated READY Pollar G-address below. All five hashes independently resolve to successful Stellar testnet transactions. |
-| Standalone `signAuthEntry` | Policy-blocked after live request | The real Pollar endpoint returned HTTP 403 `SOROBAN_AUTH_NO_POLICY` for application `subrosa`; no transaction was submitted. Exact least-privilege policy request is recorded below. |
+| Standalone `signAuthEntry` | Pollar backend upgrade pending | The least-privilege self-serve allowlist is now configured. A subsequent real request passed policy validation but Pollar returned `SOROBAN_AUTH_SIGN_FAILED` while its signer decoded the protocol-30 testnet ledger header. No transaction was submitted. |
 | Public community package | Pending | Package remains `private: true` pending explicit release authorization and final pack validation. |
 | Pollar developer listing | Pending | Alejandro's proposed listing must be linked after release. |
 | Independent production adoption | Not claimed | A testnet adapter is not customer adoption or economic volume. |
@@ -143,10 +143,36 @@ No wildcard contract or function permission is requested. After Pollar applies
 this policy, the same browser button can sign, cryptographically verify, submit,
 and export the separate on-chain evidence record without changing Round 33.
 
+### Retry after self-serve policy configuration
+
+The project configured exactly the contract/function tuple above in Pollar's
+self-serve dashboard, with no wildcard or token-contract permissions. The next
+live request passed the former allowlist gate and reached Pollar's embedded
+signer, which returned:
+
+```text
+code: SOROBAN_AUTH_SIGN_FAILED
+message: unknown StellarValueType member for value 3
+```
+
+The Pollar team identified this as its backend ledger-header decoder failing
+after Stellar testnet moved to a newer protocol version, and reported that it is
+updating the signer. This is consistent with the protocol-30 header-XDR issue
+independently observed in this repository. The adapter already avoids decoding
+the header for expiry calculation and reads only the JSON-RPC ledger sequence;
+the remaining exception occurs inside Pollar after the request leaves the
+browser. The operator-provided dashboard log URL requires an authenticated
+Pollar dashboard session and is not treated here as public evidence.
+
+No signed authorization entry was returned, the transient sponsor did not
+submit the Soroban transaction, and there is still no standalone auth-entry
+transaction hash. Round 33 and its five successful transaction hashes remain
+unchanged.
+
 ## Remaining release gates
 
-1. Ask Pollar to configure the least-privilege Soroban auth-entry allowlist above,
-   then rerun the prepared non-source proof and record its transaction hash.
+1. Wait for Pollar to deploy its newer-protocol ledger-header signer fix, then
+   rerun the prepared non-source proof and record its transaction hash.
 2. Obtain explicit release authorization, remove `private: true`, and repeat
    package validation before npm publication.
 3. Obtain Pollar's technical acceptance/listing URL. Alejandro's intent is not

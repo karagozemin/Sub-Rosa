@@ -48,12 +48,15 @@ Oscar's arbitrary Soroban transaction-signing capability confirmation is
 recorded as partner evidence. A READY authenticated Pollar G-address completed
 the full ReceiptOnly lifecycle in Round 33, proving live `signTx` interoperability.
 
-The standalone auth-entry runner also reached Pollar's real
-`/tx/sign-auth-entry` endpoint with a valid simulated Sub Rosa invocation. Pollar
-returned HTTP 403 `SOROBAN_AUTH_NO_POLICY` because application
-`cmw2xdouj00010itcvg44jdl0` (`subrosa`) has no Soroban auth-entry allowlist.
-No auth-entry transaction was submitted. This is an external application-policy
-gate, not an adapter, account, network, signer, or XDR failure.
+The standalone auth-entry runner reached Pollar's real `/tx/sign-auth-entry`
+endpoint with a valid simulated Sub Rosa invocation. The initial request exposed
+a missing application allowlist. After the exact testnet contract/function tuple
+was configured through Pollar's self-serve dashboard, the next request passed
+that gate but returned `SOROBAN_AUTH_SIGN_FAILED: unknown StellarValueType member
+for value 3`. Pollar identified its backend ledger-header decoder as incompatible
+with the newer Stellar testnet protocol and is updating it. No auth-entry
+transaction was submitted. The adapter already obtains the ledger sequence
+without decoding the protocol-30 header XDR.
 
 The repository includes `examples/pollar-e2e`, which uses Pollar's real browser
 session, DPoP key manager, email/OAuth/classic-wallet login and confirmation

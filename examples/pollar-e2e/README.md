@@ -92,5 +92,10 @@ request reached Pollar but the selected application has no Soroban auth-entry
 allowlist. Configure the exact tuple above and rerun. No Stellar transaction is
 submitted when signing is rejected.
 
+`SOROBAN_AUTH_SIGN_FAILED` with `unknown StellarValueType member for value 3`
+means policy validation passed but Pollar's backend signer could not decode the
+newer testnet ledger header. No local retry or alternate signer should be used;
+wait for Pollar's backend compatibility update and rerun the same proof.
+
 There is no alternate signer. A failure must be fixed at its actual source and
 the real Pollar flow rerun.

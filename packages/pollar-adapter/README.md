@@ -136,5 +136,9 @@ cd packages/pollar-adapter && npm pack --dry-run
 - HTTP 403 `SOROBAN_AUTH_NO_POLICY`: the `signAuthEntry` request reached Pollar,
   but the application has no Soroban auth-entry allowlist. Add the least-privilege
   contract/function tuple above and retry; this is not an XDR or signer failure.
+- `SOROBAN_AUTH_SIGN_FAILED` with `unknown StellarValueType member for value 3`:
+  Pollar accepted the request and policy, but its backend signer cannot decode
+  the current testnet ledger header. The adapter's sequence-only reader already
+  avoids this SDK incompatibility; retry after Pollar deploys its signer update.
 - `FEE_BUMP_UNSUPPORTED`: keep `skipSponsorship: true` and fund the testnet
   Pollar account; the initial adapter does not unwrap sponsored envelopes.

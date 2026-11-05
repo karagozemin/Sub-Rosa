@@ -18,7 +18,9 @@
   Ed25519 signature.
 - Read the latest ledger sequence without decoding protocol 30 ledger-header XDR.
 - Record the successful Pollar-signed Round 33 ReceiptOnly lifecycle and the
-  separate Pollar application-policy gate for standalone auth-entry signing.
+  separate live standalone auth-entry attempts: the self-serve policy gate was
+  cleared, then Pollar's backend signer exposed a newer-protocol ledger-header
+  decoder incompatibility that Pollar is updating.
 
 Release remains blocked pending the live standalone auth-entry proof, explicit
 release authorization, and removal of `private: true`. The transaction-signing
