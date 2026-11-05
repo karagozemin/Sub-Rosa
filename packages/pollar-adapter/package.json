@@ -1,0 +1,60 @@
+{
+  "name": "@sub-rosa/pollar-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Optional Pollar wallet signer bridge for Sub Rosa ReceiptOnly rounds on Stellar testnet.",
+  "license": "MIT",
+  "homepage": "https://github.com/karagozemin/Sub-Rosa#readme",
+  "bugs": {
+    "url": "https://github.com/karagozemin/Sub-Rosa/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/karagozemin/Sub-Rosa.git",
+    "directory": "packages/pollar-adapter"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "examples",
+    "README.md",
+    "COMPATIBILITY.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "pnpm run build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --import tsx --test src/index.test.ts",
+    "test:e2e": "tsx examples/receipt-only.testnet.ts"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^15.1.0"
+  },
+  "peerDependencies": {
+    "@pollar/core": "^0.12.0",
+    "@sub-rosa/sdk": "^0.3.2"
+  },
+  "devDependencies": {
+    "@pollar/core": "0.12.0",
+    "@sub-rosa/sdk": "workspace:^",
+    "@types/node": "^25.9.1",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}
