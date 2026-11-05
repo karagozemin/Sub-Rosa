@@ -16,8 +16,10 @@ import { createPollarSubRosaClient } from "./index.js";
 
 export {
   runPollarAuthEntryTestnet,
+  PollarAuthEntrySubmissionError,
   type PollarAuthEntryEvidence,
   type PollarAuthEntryProgress,
+  type PollarAuthEntryRpcResult,
   type PollarAuthEntryStage,
   type PollarAuthEntryTestOptions,
 } from "./testnet-auth-entry.js";

@@ -19,9 +19,14 @@
 - Read the latest ledger sequence without decoding protocol 30 ledger-header XDR.
 - Record the successful Pollar-signed Round 33 ReceiptOnly lifecycle and the
   separate live standalone auth-entry attempts: the self-serve policy gate was
-  cleared, then Pollar's backend signer exposed a newer-protocol ledger-header
-  decoder incompatibility that Pollar is updating.
+  cleared, Pollar fixed its newer-protocol ledger-header decoder, and the final
+  Pollar-signed non-source authorization created Round 35 on testnet.
+- Refresh source sequence, resources, footprint and fee through enforce-mode
+  simulation after auth signing; validate the distinct auth-entry and envelope
+  signatures before one-time submission.
+- Preserve raw `sendTransaction` rejection fields and decode transaction and
+  operation result codes instead of reporting the UI's generic `UNKNOWN` fallback.
 
-Release remains blocked pending the live standalone auth-entry proof, explicit
-release authorization, and removal of `private: true`. The transaction-signing
-lifecycle itself is verified with public hashes and a canonical receipt.
+Both live transaction signing and standalone auth-entry signing are verified.
+Publication remains blocked pending explicit release authorization and removal
+of `private: true`.

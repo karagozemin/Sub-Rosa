@@ -176,7 +176,7 @@ function classifyError(error: unknown): { category: string; code: string; messag
   const code = pollarCode ?? adapterCode ?? externalCode ?? "UNKNOWN";
   const normalized = `${code} ${message}`.toUpperCase();
   const category =
-    /NETWORK|TIMEOUT|RPC|HORIZON/.test(normalized) ? "network" :
+    /NETWORK|TIMEOUT|RPC|HORIZON|FAILED TO FETCH|LOAD FAILED/.test(normalized) ? "network" :
     /WALLET|ACCOUNT|PROVISION|BALANCE|FUND/.test(normalized) ? "account" :
     /POLICY|ALLOW|FORBIDDEN|OPERATION_NOT_ALLOWED/.test(normalized) ? "policy" :
     /XDR|SIGNER|SIGNATURE|FEE_BUMP|PAYLOAD_MISMATCH/.test(normalized) ? "XDR/signature" :
@@ -196,6 +196,12 @@ function showError(error: unknown, context: string): void {
   const message = document.createElement("p");
   message.textContent = diagnostic.message;
   errorPanel.append(title, code, message);
+  const record = error && typeof error === "object" ? error as Record<string, unknown> : undefined;
+  if (record?.rpcResult && typeof record.rpcResult === "object") {
+    const raw = document.createElement("pre");
+    raw.textContent = JSON.stringify(record.rpcResult, null, 2);
+    errorPanel.append(raw);
+  }
 }
 
 function renderEvidence(result: PollarTestnetEvidence): void {
@@ -248,8 +254,14 @@ function renderAuthEntryEvidence(result: PollarAuthEntryEvidence): void {
     ["Round", result.roundId],
     ["Latest ledger at signing", String(result.latestLedgerAtSigning)],
     ["Valid until ledger", String(result.validUntilLedger)],
+    ["Auth nonce", result.authNonce],
     ["Signer verified", String(result.signerVerified)],
     ["Invocation verified", String(result.invocationVerified)],
+    ["Envelope signer verified", String(result.envelopeSignerVerified)],
+    ["Enforce simulation verified", String(result.enforcedSimulationVerified)],
+    ["Transaction sequence", result.transaction.sequence],
+    ["Transaction fee", result.transaction.fee],
+    ["Submitted at ledger", String(result.transaction.submittedAtLedger)],
   ]) {
     const row = document.createElement("div");
     const term = document.createElement("dt");

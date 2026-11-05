@@ -1,7 +1,7 @@
 # Compatibility report
 
 Validated against `@pollar/core@0.12.0`, `@sub-rosa/sdk@0.3.2`, and
-`@stellar/stellar-sdk@15.1.0` on 2026-11-05.
+`@stellar/stellar-sdk@15.1.0` on 2026-11-06.
 
 ## Supported
 
@@ -41,6 +41,9 @@ Validated against `@pollar/core@0.12.0`, `@sub-rosa/sdk@0.3.2`, and
 - External Pollar wallets may choose their own auth-entry expiry. It is accepted
   only when the signed entry stays within the adapter's bounded live-ledger
   window.
+- A signed auth entry is placed into a fresh transaction and simulated with
+  `authMode: "enforce"` before assembly. Sequence, Soroban resources, footprint
+  and fee are refreshed; the sponsor then signs only the final envelope.
 
 ## External status
 
@@ -48,15 +51,15 @@ Oscar's arbitrary Soroban transaction-signing capability confirmation is
 recorded as partner evidence. A READY authenticated Pollar G-address completed
 the full ReceiptOnly lifecycle in Round 33, proving live `signTx` interoperability.
 
-The standalone auth-entry runner reached Pollar's real `/tx/sign-auth-entry`
-endpoint with a valid simulated Sub Rosa invocation. The initial request exposed
-a missing application allowlist. After the exact testnet contract/function tuple
-was configured through Pollar's self-serve dashboard, the next request passed
-that gate but returned `SOROBAN_AUTH_SIGN_FAILED: unknown StellarValueType member
-for value 3`. Pollar identified its backend ledger-header decoder as incompatible
-with the newer Stellar testnet protocol and is updating it. No auth-entry
-transaction was submitted. The adapter already obtains the ledger sequence
-without decoding the protocol-30 header XDR.
+The exact testnet contract/function tuple was configured through Pollar's
+self-serve dashboard without wildcard or token-contract permissions. After
+Pollar deployed its newer-protocol ledger-header fix, the standalone runner used
+a real Pollar auth-entry signature and a separate transient fee sponsor to
+create Round 35. Transaction
+`a1c56b0c2d206c7aafd0d4b16e46596f4ac6e4f05ea90c565787c565c6810fda`
+has RPC result `txSuccess`; both Ed25519 signatures, the non-source auth address,
+nonce, expiration, invocation, contract/function and returned round were
+independently verified.
 
 The repository includes `examples/pollar-e2e`, which uses Pollar's real browser
 session, DPoP key manager, email/OAuth/classic-wallet login and confirmation

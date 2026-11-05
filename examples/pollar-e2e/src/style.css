@@ -39,6 +39,7 @@ dd { margin: 6px 0 0; overflow-wrap: anywhere; font-family: ui-monospace, SFMono
 .progress p { margin-bottom: 0; }
 .error { margin-top: 16px; border-left: 3px solid #ff6b6b; padding: 14px 16px; background: rgba(255,107,107,.08); }
 .error code { display: inline-block; margin-left: 10px; color: #ff9a9a; }
+.error pre { overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .78rem; color: #ffcccc; }
 .good { color: #7ee2a8; }
 .bad { color: #ff8f8f; }
 .transactions { display: grid; gap: 10px; padding-left: 22px; }

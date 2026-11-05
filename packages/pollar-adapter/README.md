@@ -11,9 +11,10 @@ existing Sub Rosa SDK. The first release target is deliberately narrow:
 
 The package is currently release-gated (`private: true`). A real Pollar account
 completed the five-write ReceiptOnly lifecycle and produced the public Round 33
-evidence recorded in `docs/SCF46_POLLAR_INTEGRATION_EVIDENCE.md`. Standalone
-`signAuthEntry` verification is separately gated by the Pollar application's
-Soroban auth-entry allowlist. Unit tests are not presented as integration proof.
+evidence recorded in `docs/SCF46_POLLAR_INTEGRATION_EVIDENCE.md`. A separate
+Pollar-signed non-source authorization created Round 35 on testnet and verified
+the standalone `signAuthEntry` path. Unit tests are not presented as integration
+proof.
 
 ## Install
 
@@ -103,6 +104,12 @@ operator. Before running it, the Pollar application must allow exactly:
 
 Do not use a wildcard policy. If this application-level control is not exposed
 in the dashboard, ask the Pollar operator to configure it for the application.
+The verified public proof is transaction
+[`a1c56b0c2d206c7aafd0d4b16e46596f4ac6e4f05ea90c565787c565c6810fda`](https://stellar.expert/explorer/testnet/tx/a1c56b0c2d206c7aafd0d4b16e46596f4ac6e4f05ea90c565787c565c6810fda),
+which returned Round 35. The runner performs a fresh enforce-mode simulation
+after auth signing, refreshes sequence/resources/footprint/fee, verifies the
+Pollar auth signature and sponsor envelope signature independently, and submits
+the resulting envelope once.
 
 ## Development
 

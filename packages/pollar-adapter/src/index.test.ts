@@ -20,6 +20,10 @@ import {
   createPollarSubRosaSigner,
   type PollarSigningClient,
 } from "./index.js";
+import {
+  PollarAuthEntrySubmissionError,
+  decodePollarTransactionResult,
+} from "./testnet-auth-entry.js";
 
 const wallet = Keypair.random();
 const other = Keypair.random();
@@ -439,4 +443,40 @@ test("enforces the ReceiptOnly write boundary", async () => {
     client.settleV2(1n),
     expectCode("RECEIPT_ONLY_REQUIRED"),
   );
+});
+
+test("preserves raw Stellar RPC rejection evidence with a stable diagnostic code", () => {
+  const error = new PollarAuthEntrySubmissionError({
+    status: "ERROR",
+    hash: "ab".repeat(32),
+    latestLedger: 123,
+    latestLedgerCloseTime: 456,
+    errorResultXdr: "AAAA",
+    errorResultCode: "txSorobanInvalid",
+    operationResultCodes: ["opInner:invokeHostFunction:invokeHostFunctionTrapped"],
+    diagnosticEventsXdr: ["BBBB"],
+    diagnosticEventsDecoded: ["contract error"],
+  });
+
+  assert.equal(error.code, "STELLAR_RPC_REJECTED");
+  assert.equal(error.rpcResult.errorResultXdr, "AAAA");
+  assert.match(error.message, /txSorobanInvalid/);
+  assert.doesNotMatch(error.message, /UNKNOWN/);
+});
+
+test("decodes nested Soroban sendTransaction rejection codes", () => {
+  const hostResult = xdr.InvokeHostFunctionResult.invokeHostFunctionTrapped();
+  const operation = xdr.OperationResult.opInner(
+    xdr.OperationResultTr.invokeHostFunction(hostResult),
+  );
+  const result = new xdr.TransactionResult({
+    feeCharged: xdr.Int64.fromString("100"),
+    result: xdr.TransactionResultResult.txFailed([operation]),
+    ext: new xdr.TransactionResultExt(0),
+  });
+
+  assert.deepEqual(decodePollarTransactionResult(result.toXDR("base64")), {
+    errorResultCode: "txFailed",
+    operationResultCodes: ["opInner:invokeHostFunction:invokeHostFunctionTrapped"],
+  });
 });

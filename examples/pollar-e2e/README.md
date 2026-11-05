@@ -73,6 +73,16 @@ Open `http://127.0.0.1:4175` in the same browser you will use for login.
    authorization proof. The transient sponsor secret stays in memory and can
    sign only the fee envelope; the Pollar wallet must sign its own auth entry.
 
+The runner verifies the returned Pollar Ed25519 auth signature, rebuilds from a
+fresh source sequence, runs an enforce-mode simulation with the signed entry,
+refreshes Soroban resources/footprint/fee, independently verifies the sponsor's
+envelope signature, and submits once. Any immediate RPC rejection displays the
+raw public `errorResultXdr`, diagnostic events and decoded result codes; it does
+not retry stale XDR.
+
+Verified reference: Round 35, transaction
+[`a1c56b0c2d206c7aafd0d4b16e46596f4ac6e4f05ea90c565787c565c6810fda`](https://stellar.expert/explorer/testnet/tx/a1c56b0c2d206c7aafd0d4b16e46596f4ac6e4f05ea90c565787c565c6810fda).
+
 DPoP keys and session tokens remain in Pollar's browser storage/key manager for
 this origin. The UI never assigns the client to `window`, never renders tokens,
 and never exports raw signed payloads. Use **Log out** when finished.

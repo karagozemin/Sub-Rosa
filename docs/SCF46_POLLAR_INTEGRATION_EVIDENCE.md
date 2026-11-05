@@ -1,15 +1,15 @@
 # SCF #46 — Pollar × Sub Rosa integration evidence
 
-Last updated: 2026-11-05
+Last updated: 2026-11-06
 
 ## Current evidence level
 
-**Live Pollar-signed ReceiptOnly testnet proof verified; package publication pending.**
+**Live Pollar transaction signing and standalone Soroban auth-entry signing are
+both verified on Stellar testnet; package publication pending approval.**
 
 - Implementation commit: https://github.com/karagozemin/Sub-Rosa/commit/03cb8ec
 - Review PR: https://github.com/karagozemin/Sub-Rosa/pull/1
-- npm package: not published; `@sub-rosa/pollar-adapter` returned no public
-  registry version on 2026-11-05.
+- npm package: not published; the package remains `private: true`.
 
 This document deliberately distinguishes implementation from validation,
 publication, listing, and adoption. A local unit test is not a Pollar-signed
@@ -21,7 +21,7 @@ testnet transaction.
 | Arbitrary Soroban SDK capability | Confirmed in writing | User reports Alejandro confirmed with Oscar that Pollar supports arbitrary Soroban contract transaction signing without restrictions. Preserve the original confirmation before quoting it publicly. |
 | Working local adapter | Implemented | `packages/pollar-adapter`, real `@pollar/core@0.12.0` and `@sub-rosa/sdk` types, automated tests and pack validation. |
 | Real Pollar testnet lifecycle | Verified | Round 33 completed through the interactive runner with the authenticated READY Pollar G-address below. All five hashes independently resolve to successful Stellar testnet transactions. |
-| Standalone `signAuthEntry` | Pollar backend upgrade pending | The least-privilege self-serve allowlist is now configured. A subsequent real request passed policy validation but Pollar returned `SOROBAN_AUTH_SIGN_FAILED` while its signer decoded the protocol-30 testnet ledger header. No transaction was submitted. |
+| Standalone `signAuthEntry` | Verified | Pollar signed the non-source wallet authorization, a distinct transient account signed the envelope, enforce-mode simulation passed, and Round 35 succeeded in ledger 5579176. |
 | Public community package | Pending | Package remains `private: true` pending explicit release authorization and final pack validation. |
 | Pollar developer listing | Pending | Alejandro's proposed listing must be linked after release. |
 | Independent production adoption | Not claimed | A testnet adapter is not customer adoption or economic volume. |
@@ -44,6 +44,9 @@ creates bias. It is not intended for ordinary instant payments or swaps.
 - Stellar authorization-preimage to Pollar full-entry adaptation, plus
   live-ledger expiry, invocation, nonce, address and Ed25519 signature checks.
 - Explicit handling for `cosign_pending` and backend policy failures.
+- Fresh post-signature enforce-mode simulation, sequence/resource/footprint/fee
+  refresh, separate envelope-signature verification, and raw RPC rejection
+  decoding without blind resubmission.
 - Real-SDK ReceiptOnly lifecycle harness with no fallback signer.
 - Local browser authentication runner using Pollar email OTP, Google/GitHub, or
   built-in classic-wallet login. The same in-memory client signs the lifecycle.
@@ -59,14 +62,14 @@ Record final command output after the branch is committed:
 | Command | Result |
 |---|---|
 | `pnpm --filter @sub-rosa/pollar-adapter typecheck` | PASS |
-| `pnpm --filter @sub-rosa/pollar-adapter test` | PASS — 17/17 |
+| `pnpm --filter @sub-rosa/pollar-adapter test` | PASS — 19/19 |
 | `pnpm --filter @sub-rosa/pollar-adapter build` | PASS |
 | `pnpm pollar-e2e:build` | PASS — interactive browser runner |
 | `npm pack --dry-run` from adapter package | PASS — release manifest validated |
 | `pnpm --filter @sub-rosa/sdk test` | PASS — 204/204 |
 | `pnpm -r --if-present test` | PASS — all 11 test-bearing workspace projects |
 
-## Live testnet proof
+## Original live ReceiptOnly proof — Round 33 preserved
 
 On 2026-11-05 the local browser harness authenticated a real, server-verified
 Pollar testnet session with an internally-custodied classic G-address wallet in
@@ -100,11 +103,72 @@ contract above, and decodes respectively to `create_partner_round_v2`,
 `commit_v2`, `open_reveal_v2`, `reveal_v2`, and `clear_v2`.
 
 This direct-source lifecycle proves Pollar `signTx` compatibility for arbitrary
-Sub Rosa Soroban transactions. It does not invoke `signAuthEntry`; a separate
-non-source authorization flow is still required before claiming live
-`signAuthEntry` proof.
+Sub Rosa Soroban transactions. It remains preserved as the original proof and
+is independent of the later standalone `signAuthEntry` transaction.
 
-## Standalone authorization-entry attempt
+## Latest ReceiptOnly regression proof — Round 34
+
+After Pollar's protocol-30 backend update, the same authenticated Pollar wallet
+completed a second five-write ReceiptOnly lifecycle. The harness verified the
+canonical receipt and all five hashes independently resolved to `SUCCESS`:
+
+| Operation | Stellar testnet transaction | Ledger | RPC status |
+|---|---|---:|---|
+| Create ReceiptOnly round | [`d919d8093700df3738a46fc6e5645663917ce800aa4bd86146748bfcda70724e`](https://stellar.expert/explorer/testnet/tx/d919d8093700df3738a46fc6e5645663917ce800aa4bd86146748bfcda70724e) | 5579072 | SUCCESS |
+| Sealed commit | [`8b9fccf312b20e0038fbd91d1c9a5756fdf26073629d970511d51c8f2131ed52`](https://stellar.expert/explorer/testnet/tx/8b9fccf312b20e0038fbd91d1c9a5756fdf26073629d970511d51c8f2131ed52) | 5579077 | SUCCESS |
+| Open reveal | [`73f75b1392af4b7a945b2c75695969894246b1b147cdc1657feec54cd544cd5c`](https://stellar.expert/explorer/testnet/tx/73f75b1392af4b7a945b2c75695969894246b1b147cdc1657feec54cd544cd5c) | 5579115 | SUCCESS |
+| Reveal | [`d69677597ab9a0ab92effd52c469a33dccef31b57d9c69d9408a4329d37c96f7`](https://stellar.expert/explorer/testnet/tx/d69677597ab9a0ab92effd52c469a33dccef31b57d9c69d9408a4329d37c96f7) | 5579119 | SUCCESS |
+| Clear | [`a7eb61b48b08147d0c1fa2feeed33e51c61473281da0ba9c7a4284e769060add`](https://stellar.expert/explorer/testnet/tx/a7eb61b48b08147d0c1fa2feeed33e51c61473281da0ba9c7a4284e769060add) | 5579153 | SUCCESS |
+
+- Round ID: `34`
+- Canonical receipt SHA-256:
+  `c3c446ec0832894344a1e609049d4d39eb1c58fcdbc08087563fdb34bf8cfb3a`
+- `verifyReceiptV2(...).valid`: `true`
+
+## Standalone authorization-entry verification — Round 35
+
+The least-privilege Pollar application allowlist contains only the Sub Rosa
+testnet contract and `create_partner_round_v2`; no wildcard or token contract
+permission was added. A Friendbot-funded transient G-address paid the fee and
+signed the transaction envelope. The authenticated Pollar wallet separately
+signed the Soroban address authorization entry as the non-source operator.
+
+| Field | Verified value |
+|---|---|
+| Pollar authorizer | `GCGHLZRGDAOFKUWPCKOG3OIC62ZEHAFM6AKIWJGRLRIX7OIAJT36AGL3` |
+| Envelope source/sponsor | `GDYWMF5WUQASUEXU3JVD7AAQERF4QJMAWUKSU4B3F7PBJMFSAKKDUJSI` |
+| Contract | `CCOVGOQQZJKZ2R55GRWBLTJTGBAMSHXZVN3ICPG3WRVMLMM6RHISC5OV` |
+| Function | `create_partner_round_v2` |
+| Auth nonce | `8843141292032622291` |
+| Latest ledger at signing | `5579170` |
+| Valid until ledger | `5579250` |
+| Submitted at ledger | `5579175` |
+| Included ledger / result | `5579176` / `txSuccess` |
+| Returned round | `35` |
+
+Transaction:
+[`a1c56b0c2d206c7aafd0d4b16e46596f4ac6e4f05ea90c565787c565c6810fda`](https://stellar.expert/explorer/testnet/tx/a1c56b0c2d206c7aafd0d4b16e46596f4ac6e4f05ea90c565787c565c6810fda)
+
+Independent verification against Stellar testnet RPC confirmed:
+
+- RPC status `SUCCESS`, decoded transaction result `txSuccess`, and envelope
+  hash equal to the public transaction hash.
+- Exactly one `invokeHostFunction` operation targeting the contract/function
+  above and exactly one address-credential auth entry.
+- Auth address/public key equal to the Pollar G-address; nonce, invocation tree,
+  testnet network ID and ledger expiration bound into the signed preimage.
+- Pollar Ed25519 authorization signature cryptographically valid.
+- Transaction source equal to the transient sponsor and its separate envelope
+  Ed25519 signature cryptographically valid.
+- Soroban transaction data present after a fresh enforce-mode simulation; fee
+  `1210615`, sequence `23962352688824321`, and return value Round `35`.
+
+The public machine-readable record is
+[`docs/evidence/pollar-auth-entry-round-35.json`](evidence/pollar-auth-entry-round-35.json).
+No Pollar session token, DPoP key, publishable key, sponsor secret, raw signed
+payload, or private signing material is included.
+
+### Earlier authorization attempts — chronology preserved
 
 On 2026-11-05 the browser runner constructed a genuine non-invoker Soroban
 authorization flow: a Friendbot-funded transient G-address was the transaction
@@ -164,18 +228,16 @@ the remaining exception occurs inside Pollar after the request leaves the
 browser. The operator-provided dashboard log URL requires an authenticated
 Pollar dashboard session and is not treated here as public evidence.
 
-No signed authorization entry was returned, the transient sponsor did not
-submit the Soroban transaction, and there is still no standalone auth-entry
-transaction hash. Round 33 and its five successful transaction hashes remain
-unchanged.
+No signed authorization entry was returned during that attempt and the
+transient sponsor submitted nothing. Pollar subsequently deployed its decoder
+fix, after which the fresh Round 35 proof above succeeded. Round 33 and its five
+original transaction hashes remain unchanged.
 
 ## Remaining release gates
 
-1. Wait for Pollar to deploy its newer-protocol ledger-header signer fix, then
-   rerun the prepared non-source proof and record its transaction hash.
-2. Obtain explicit release authorization, remove `private: true`, and repeat
+1. Obtain explicit release authorization, remove `private: true`, and repeat
    package validation before npm publication.
-3. Obtain Pollar's technical acceptance/listing URL. Alejandro's intent is not
+2. Obtain Pollar's technical acceptance/listing URL. Alejandro's intent is not
    itself evidence that the adapter has been listed.
 
 ## SCF wording supported by the live proof
@@ -187,3 +249,9 @@ unchanged.
 > independently maintained in the Sub Rosa repository and does not modify
 > Pollar core. This demonstrates developer-tooling interoperability; it is not
 > presented as production adoption or transaction volume.
+
+> A separate public testnet transaction verifies standalone Pollar
+> `signAuthEntry`: the Pollar G-address authorized the Sub Rosa contract call as
+> non-source operator while an unrelated transient account signed and paid the
+> envelope. Both signatures and the on-chain Round 35 result were independently
+> verified.

@@ -63,12 +63,45 @@ export interface PollarAuthEntryEvidence {
   validUntilLedger: number;
   signerVerified: true;
   invocationVerified: true;
+  envelopeSignerVerified: true;
+  enforcedSimulationVerified: true;
+  authNonce: string;
   transaction: {
     hash: string;
     status: "SUCCESS";
     ledger: number;
+    sequence: string;
+    fee: string;
+    submittedAtLedger: number;
     explorerUrl: string;
   };
+}
+
+export interface PollarAuthEntryRpcResult {
+  status: rpc.Api.SendTransactionStatus;
+  hash: string;
+  latestLedger: number;
+  latestLedgerCloseTime: number;
+  errorResultXdr?: string;
+  errorResultCode?: string;
+  operationResultCodes?: string[];
+  diagnosticEventsXdr?: string[];
+  diagnosticEventsDecoded?: string[];
+}
+
+export class PollarAuthEntrySubmissionError extends Error {
+  readonly name = "PollarAuthEntrySubmissionError";
+  readonly code = "STELLAR_RPC_REJECTED";
+
+  constructor(readonly rpcResult: PollarAuthEntryRpcResult) {
+    const decoded = [rpcResult.errorResultCode, ...(rpcResult.operationResultCodes ?? [])]
+      .filter(Boolean)
+      .join(" / ");
+    super(
+      `Stellar RPC rejected the fresh signed auth-entry transaction: status=${rpcResult.status}, ` +
+      `hash=${rpcResult.hash}, decoded=${decoded || "unavailable"}`,
+    );
+  }
 }
 
 const DEFAULT_RPC_URL = "https://soroban-testnet.stellar.org";
@@ -171,6 +204,74 @@ function unitEnum(name: string): xdr.ScVal {
   return xdr.ScVal.scvVec([xdr.ScVal.scvSymbol(name)]);
 }
 
+export function decodePollarTransactionResult(errorResultXdr: string): {
+  errorResultCode: string;
+  operationResultCodes?: string[];
+} {
+  const decoded = xdr.TransactionResult.fromXDR(errorResultXdr, "base64");
+  const result = decoded.result();
+  const errorResultCode = result.switch().name;
+  if (errorResultCode !== "txFailed" && errorResultCode !== "txSuccess") {
+    return { errorResultCode };
+  }
+  const operationResultCodes = result.results().map((operation) => {
+    const operationCode = operation.switch().name;
+    if (operationCode !== "opInner") return operationCode;
+    const inner = operation.tr();
+    const innerCode = inner.switch().name;
+    if (innerCode !== "invokeHostFunction") return `${operationCode}:${innerCode}`;
+    return `${operationCode}:${innerCode}:${inner.invokeHostFunctionResult().switch().name}`;
+  });
+  return { errorResultCode, operationResultCodes };
+}
+
+function jsonDiagnostic(value: unknown): string {
+  return JSON.stringify(value, (_key, item: unknown) =>
+    typeof item === "bigint" ? item.toString() : item,
+  );
+}
+
+function decodeDiagnosticEvent(eventXdr: string): string {
+  try {
+    const diagnostic = xdr.DiagnosticEvent.fromXDR(eventXdr, "base64");
+    const event = diagnostic.event();
+    const body = event.body().v0();
+    return jsonDiagnostic({
+      inSuccessfulContractCall: diagnostic.inSuccessfulContractCall(),
+      eventType: event.type().name,
+      topics: body.topics().map((topic) => scValToNative(topic) as unknown),
+      data: scValToNative(body.data()) as unknown,
+    });
+  } catch (error) {
+    return `diagnostic decode failed: ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
+function sanitizeRpcResult(raw: rpc.Api.RawSendTransactionResponse): PollarAuthEntryRpcResult {
+  let decoded: ReturnType<typeof decodePollarTransactionResult> | undefined;
+  if (raw.errorResultXdr) {
+    try {
+      decoded = decodePollarTransactionResult(raw.errorResultXdr);
+    } catch {
+      decoded = { errorResultCode: "errorResultXdr decode failed" };
+    }
+  }
+  return {
+    status: raw.status,
+    hash: raw.hash,
+    latestLedger: raw.latestLedger,
+    latestLedgerCloseTime: raw.latestLedgerCloseTime,
+    ...(raw.errorResultXdr ? { errorResultXdr: raw.errorResultXdr } : {}),
+    ...decoded,
+    ...(raw.diagnosticEventsXdr && raw.diagnosticEventsXdr.length > 0
+      ? {
+          diagnosticEventsXdr: raw.diagnosticEventsXdr,
+          diagnosticEventsDecoded: raw.diagnosticEventsXdr.map(decodeDiagnosticEvent),
+        }
+      : {}),
+  };
+}
+
 async function waitForSuccess(
   server: rpc.Server,
   transactionHash: string,
@@ -191,7 +292,7 @@ function verifyAuthEntry(
   wallet: string,
   contractId: string,
   expectedExpiration: number,
-): void {
+): string {
   const credentials = entry.credentials();
   if (credentials.switch().name !== "sorobanCredentialsAddress") {
     throw new Error("Pollar authorization did not use address credentials");
@@ -236,6 +337,39 @@ function verifyAuthEntry(
     !Keypair.fromPublicKey(wallet).verify(hash(preimage.toXDR()), signature)
   ) {
     throw new Error("Pollar authorization entry has an invalid Ed25519 signature");
+  }
+  return addressCredentials.nonce().toString();
+}
+
+function verifyPreparedTransaction(
+  transaction: Transaction,
+  sponsor: string,
+  wallet: string,
+  authorization: xdr.SorobanAuthorizationEntry,
+): void {
+  if (transaction.source !== sponsor || transaction.signatures.length !== 0) {
+    throw new Error("Fresh prepared transaction source/signature state is invalid");
+  }
+  if (transaction.operations.length !== 1 || transaction.operations[0]?.type !== "invokeHostFunction") {
+    throw new Error("Fresh prepared transaction must contain one invokeHostFunction operation");
+  }
+  const included = addressAuthEntry(transaction.operations[0].auth, wallet);
+  if (!included.toXDR().equals(authorization.toXDR())) {
+    throw new Error("Fresh prepared transaction does not contain the verified Pollar auth entry");
+  }
+  if (!transaction.toEnvelope().v1().tx().ext().value()) {
+    throw new Error("Fresh prepared transaction is missing simulated Soroban transaction data");
+  }
+}
+
+function verifyEnvelopeSignature(transaction: Transaction, sponsor: string): void {
+  if (
+    transaction.source !== sponsor ||
+    !transaction.signatures.some((signature) =>
+      Keypair.fromPublicKey(sponsor).verify(transaction.hash(), signature.signature()),
+    )
+  ) {
+    throw new Error("Final transaction envelope is not signed by the ephemeral fee sponsor");
   }
 }
 
@@ -339,33 +473,55 @@ export async function runPollarAuthEntryTestnet(
   );
 
   progress("verify_auth_entry", "Verifying signer, invocation, network and expiration before submission");
-  verifyAuthEntry(authorization, wallet, contractId, validUntilLedger);
+  const authNonce = verifyAuthEntry(authorization, wallet, contractId, validUntilLedger);
   const latestAfterSigning = await latestLedgerSequence(rpcUrl);
   if (validUntilLedger <= latestAfterSigning) {
     throw new Error("Pollar authorization expired before transaction submission");
   }
 
-  progress("submit", "Signing only the fee envelope with the ephemeral sponsor and submitting to testnet");
-  const builder = TransactionBuilder.cloneFrom(assembled, {
-    fee: assembled.fee,
+  progress("submit", "Refreshing sequence, resources, footprint and fee with the signed auth entry");
+  const freshSource = await server.getAccount(sponsor.publicKey());
+  const authorizedRaw = new TransactionBuilder(freshSource, {
+    fee: BASE_FEE,
     networkPassphrase: Networks.TESTNET,
-  });
-  builder.clearOperations();
-  builder.addOperation(Operation.invokeHostFunction({
-    source: invoke.source,
-    func: invoke.func,
-    auth: (invoke.auth ?? []).map((entry) => entry === unsignedAuthorization ? authorization : entry),
-  }));
-  const ready = builder.build();
+  })
+    .addOperation(Operation.invokeHostFunction({
+      source: invoke.source,
+      func: invoke.func,
+      auth: (invoke.auth ?? []).map((entry) =>
+        entry === unsignedAuthorization ? authorization : entry,
+      ),
+    }))
+    .setTimeout(180)
+    .build();
+  const enforcedSimulation = await server.simulateTransaction(
+    authorizedRaw,
+    undefined,
+    "enforce",
+  );
+  if (!rpc.Api.isSimulationSuccess(enforcedSimulation)) {
+    const details = "error" in enforcedSimulation
+      ? enforcedSimulation.error
+      : "unknown enforce-mode RPC response";
+    throw new Error(`Signed Pollar authorization failed fresh enforce-mode simulation: ${details}`);
+  }
+  const ready = rpc.assembleTransaction(authorizedRaw, enforcedSimulation).build();
+  verifyPreparedTransaction(ready, sponsor.publicKey(), wallet, authorization);
+  const latestBeforeSubmit = await latestLedgerSequence(rpcUrl);
+  if (validUntilLedger <= latestBeforeSubmit) {
+    throw new Error("Pollar authorization expired while preparing the fresh transaction");
+  }
   const signed = await sponsorSigner(sponsor)(ready.toXDR(), {
     address: sponsor.publicKey(),
     networkPassphrase: Networks.TESTNET,
   });
   const signedTransaction = TransactionBuilder.fromXDR(signed.signedTxXdr, Networks.TESTNET);
   if (!(signedTransaction instanceof Transaction)) throw new Error("Sponsor returned an invalid transaction type");
-  const submitted = await server.sendTransaction(signedTransaction);
-  if (submitted.status === "ERROR") {
-    throw new Error("Stellar RPC rejected the signed auth-entry transaction envelope");
+  verifyEnvelopeSignature(signedTransaction, sponsor.publicKey());
+  const submittedRaw = await server._sendTransaction(signedTransaction);
+  const submitted = sanitizeRpcResult(submittedRaw);
+  if (submitted.status === "ERROR" || submitted.status === "TRY_AGAIN_LATER") {
+    throw new PollarAuthEntrySubmissionError(submitted);
   }
   const transactionHash = submitted.hash;
   const onChain = await waitForSuccess(server, transactionHash);
@@ -387,10 +543,16 @@ export async function runPollarAuthEntryTestnet(
     validUntilLedger,
     signerVerified: true,
     invocationVerified: true,
+    envelopeSignerVerified: true,
+    enforcedSimulationVerified: true,
+    authNonce,
     transaction: {
       hash: transactionHash,
       status: onChain.status,
       ledger: onChain.ledger,
+      sequence: signedTransaction.sequence,
+      fee: signedTransaction.fee,
+      submittedAtLedger: submitted.latestLedger,
       explorerUrl: `https://stellar.expert/explorer/testnet/tx/${transactionHash}`,
     },
   };
