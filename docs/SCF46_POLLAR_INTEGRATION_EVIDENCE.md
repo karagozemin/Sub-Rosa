@@ -21,6 +21,7 @@ testnet transaction.
 | Arbitrary Soroban SDK capability | Confirmed in writing | User reports Alejandro confirmed with Oscar that Pollar supports arbitrary Soroban contract transaction signing without restrictions. Preserve the original confirmation before quoting it publicly. |
 | Working local adapter | Implemented | `packages/pollar-adapter`, real `@pollar/core@0.12.0` and `@sub-rosa/sdk` types, automated tests and pack validation. |
 | Real Pollar testnet lifecycle | Verified | Round 33 completed through the interactive runner with the authenticated READY Pollar G-address below. All five hashes independently resolve to successful Stellar testnet transactions. |
+| Standalone `signAuthEntry` | Policy-blocked after live request | The real Pollar endpoint returned HTTP 403 `SOROBAN_AUTH_NO_POLICY` for application `subrosa`; no transaction was submitted. Exact least-privilege policy request is recorded below. |
 | Public community package | Pending | Package remains `private: true` pending explicit release authorization and final pack validation. |
 | Pollar developer listing | Pending | Alejandro's proposed listing must be linked after release. |
 | Independent production adoption | Not claimed | A testnet adapter is not customer adoption or economic volume. |
@@ -40,7 +41,8 @@ creates bias. It is not intended for ordinary instant payments or swaps.
 - Testnet/G-address/readiness/network enforcement.
 - Transaction body, source, Ed25519 signature, fee-bump, and malformed-XDR
   verification.
-- Live-ledger authorization expiry and invocation/address integrity checks.
+- Stellar authorization-preimage to Pollar full-entry adaptation, plus
+  live-ledger expiry, invocation, nonce, address and Ed25519 signature checks.
 - Explicit handling for `cosign_pending` and backend policy failures.
 - Real-SDK ReceiptOnly lifecycle harness with no fallback signer.
 - Local browser authentication runner using Pollar email OTP, Google/GitHub, or
@@ -57,7 +59,7 @@ Record final command output after the branch is committed:
 | Command | Result |
 |---|---|
 | `pnpm --filter @sub-rosa/pollar-adapter typecheck` | PASS |
-| `pnpm --filter @sub-rosa/pollar-adapter test` | PASS — 14/14 |
+| `pnpm --filter @sub-rosa/pollar-adapter test` | PASS — 17/17 |
 | `pnpm --filter @sub-rosa/pollar-adapter build` | PASS |
 | `pnpm pollar-e2e:build` | PASS — interactive browser runner |
 | `npm pack --dry-run` from adapter package | PASS — release manifest validated |
@@ -102,10 +104,49 @@ Sub Rosa Soroban transactions. It does not invoke `signAuthEntry`; a separate
 non-source authorization flow is still required before claiming live
 `signAuthEntry` proof.
 
+## Standalone authorization-entry attempt
+
+On 2026-11-05 the browser runner constructed a genuine non-invoker Soroban
+authorization flow: a Friendbot-funded transient G-address was the transaction
+source and fee payer, while the authenticated Pollar wallet was the Sub Rosa
+`create_partner_round_v2` operator. Simulation produced a distinct address
+authorization entry for the Pollar wallet. The runner bound it to Stellar
+testnet, requested expiration at ledger `5565008`, and called the real
+`@pollar/core@0.12.0` `signAuthEntry` method using the existing authenticated
+client. No private-key fallback or second wallet could authorize that entry.
+
+Pollar returned HTTP 403:
+
+```text
+code: SOROBAN_AUTH_NO_POLICY
+message: no Soroban auth-entry allowlist is configured for this application
+applicationId: cmw2xdouj00010itcvg44jdl0
+applicationName: subrosa
+```
+
+No Stellar transaction was submitted and there is no auth-entry transaction
+hash to report. This establishes that authentication, wallet selection,
+simulation, network binding, XDR construction, live-ledger lookup and the real
+Pollar API path were reached. It does not establish a successful live signature.
+The response classifies the blocker as Pollar application policy, not account,
+network, signer, malformed XDR, or Stellar submission.
+
+Least-privilege configuration required for the rerun:
+
+- network: Stellar testnet
+- application: `cmw2xdouj00010itcvg44jdl0` (`subrosa`)
+- contract: `CCOVGOQQZJKZ2R55GRWBLTJTGBAMSHXZVN3ICPG3WRVMLMM6RHISC5OV`
+- function: `create_partner_round_v2`
+- allow an 80-ledger authorization lifetime
+
+No wildcard contract or function permission is requested. After Pollar applies
+this policy, the same browser button can sign, cryptographically verify, submit,
+and export the separate on-chain evidence record without changing Round 33.
+
 ## Remaining release gates
 
-1. Exercise a real non-source Soroban authorization entry if that capability is
-   included in the first public claim.
+1. Ask Pollar to configure the least-privilege Soroban auth-entry allowlist above,
+   then rerun the prepared non-source proof and record its transaction hash.
 2. Obtain explicit release authorization, remove `private: true`, and repeat
    package validation before npm publication.
 3. Obtain Pollar's technical acceptance/listing URL. Alejandro's intent is not

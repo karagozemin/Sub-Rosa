@@ -9,7 +9,9 @@ import {
   PollarAdapterError,
 } from "@sub-rosa/pollar-adapter";
 import {
+  runPollarAuthEntryTestnet,
   runPollarReceiptOnlyTestnet,
+  type PollarAuthEntryEvidence,
   type PollarTestnetEvidence,
 } from "@sub-rosa/pollar-adapter/testnet";
 
@@ -33,6 +35,7 @@ const albedoLogin = byId<HTMLButtonElement>("albedo-login");
 const logoutButton = byId<HTMLButtonElement>("logout");
 const refreshWalletButton = byId<HTMLButtonElement>("refresh-wallet");
 const runButton = byId<HTMLButtonElement>("run-e2e");
+const runAuthEntryButton = byId<HTMLButtonElement>("run-auth-entry");
 const authStateElement = byId<HTMLElement>("auth-state");
 const networkStateElement = byId<HTMLElement>("network-state");
 const walletAddress = byId<HTMLElement>("wallet-address");
@@ -47,6 +50,11 @@ const errorPanel = byId<HTMLElement>("error-panel");
 const evidenceCard = byId<HTMLElement>("evidence-card");
 const evidenceElement = byId<HTMLElement>("evidence");
 const downloadEvidence = byId<HTMLButtonElement>("download-evidence");
+const authEntryStage = byId<HTMLElement>("auth-entry-stage");
+const authEntryMessage = byId<HTMLElement>("auth-entry-message");
+const authEntryEvidenceCard = byId<HTMLElement>("auth-entry-evidence-card");
+const authEntryEvidenceElement = byId<HTMLElement>("auth-entry-evidence");
+const downloadAuthEntryEvidence = byId<HTMLButtonElement>("download-auth-entry-evidence");
 
 const apiKey = import.meta.env.VITE_POLLAR_PUBLISHABLE_KEY?.trim() ?? "";
 const baseUrl = import.meta.env.VITE_POLLAR_BASE_URL?.trim() || undefined;
@@ -57,6 +65,7 @@ let pollar: PollarClient | undefined;
 let authState: AuthState = { step: "idle" };
 let running = false;
 let evidence: PollarTestnetEvidence | undefined;
+let authEntryEvidence: PollarAuthEntryEvidence | undefined;
 
 function setText(element: HTMLElement, value: string): void {
   element.textContent = value;
@@ -76,6 +85,7 @@ function refreshActions(): void {
   const authenticated = authState.step === "authenticated" && authState.verified;
   const wallet = pollar?.getWallet() ?? null;
   runButton.disabled = !configured || !authenticated || !isRunnableWallet(wallet) || running;
+  runAuthEntryButton.disabled = !configured || !authenticated || !isRunnableWallet(wallet) || running;
   logoutButton.disabled = !authenticated || running;
   refreshWalletButton.disabled = !authenticated || running;
   emailLogin.disabled = !configured || running;
@@ -225,6 +235,40 @@ function renderEvidence(result: PollarTestnetEvidence): void {
   evidenceElement.append(summary, list);
 }
 
+function renderAuthEntryEvidence(result: PollarAuthEntryEvidence): void {
+  authEntryEvidenceCard.hidden = false;
+  authEntryEvidenceElement.replaceChildren();
+  const summary = document.createElement("dl");
+  summary.className = "status-grid";
+  for (const [label, value] of [
+    ["Wallet authorizer", result.wallet],
+    ["Fee sponsor", result.sponsor],
+    ["Contract", result.contractId],
+    ["Function", result.function],
+    ["Round", result.roundId],
+    ["Latest ledger at signing", String(result.latestLedgerAtSigning)],
+    ["Valid until ledger", String(result.validUntilLedger)],
+    ["Signer verified", String(result.signerVerified)],
+    ["Invocation verified", String(result.invocationVerified)],
+  ]) {
+    const row = document.createElement("div");
+    const term = document.createElement("dt");
+    term.textContent = label;
+    const description = document.createElement("dd");
+    description.textContent = value;
+    row.append(term, description);
+    summary.append(row);
+  }
+  const transaction = document.createElement("p");
+  const link = document.createElement("a");
+  link.href = result.transaction.explorerUrl;
+  link.target = "_blank";
+  link.rel = "noreferrer";
+  link.textContent = `${result.transaction.hash} · ledger ${result.transaction.ledger}`;
+  transaction.append("SUCCESS · ", link);
+  authEntryEvidenceElement.append(summary, transaction);
+}
+
 function startLogin(provider: "google" | "github"): void {
   errorPanel.hidden = true;
   pollar?.login({ provider });
@@ -283,7 +327,9 @@ albedoLogin.addEventListener("click", () => pollar?.login({ provider: WalletType
 logoutButton.addEventListener("click", async () => {
   await pollar?.logout();
   evidence = undefined;
+  authEntryEvidence = undefined;
   evidenceCard.hidden = true;
+  authEntryEvidenceCard.hidden = true;
 });
 refreshWalletButton.addEventListener("click", async () => {
   await pollar?.refreshWalletState();
@@ -312,6 +358,29 @@ runButton.addEventListener("click", async () => {
     refreshActions();
   }
 });
+runAuthEntryButton.addEventListener("click", async () => {
+  if (!pollar || running) return;
+  running = true;
+  authEntryEvidence = undefined;
+  authEntryEvidenceCard.hidden = true;
+  errorPanel.hidden = true;
+  refreshActions();
+  try {
+    authEntryEvidence = await runPollarAuthEntryTestnet(pollar, {
+      rpcUrl,
+      onProgress: ({ stage, message }) => {
+        setText(authEntryStage, stage);
+        setText(authEntryMessage, message);
+      },
+    });
+    renderAuthEntryEvidence(authEntryEvidence);
+  } catch (error) {
+    showError(error, authEntryStage.textContent || "signAuthEntry");
+  } finally {
+    running = false;
+    refreshActions();
+  }
+});
 downloadEvidence.addEventListener("click", () => {
   if (!evidence) return;
   const blob = new Blob([`${JSON.stringify(evidence, null, 2)}\n`], { type: "application/json" });
@@ -319,6 +388,16 @@ downloadEvidence.addEventListener("click", () => {
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = `pollar-sub-rosa-testnet-round-${evidence.roundId}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+});
+downloadAuthEntryEvidence.addEventListener("click", () => {
+  if (!authEntryEvidence) return;
+  const blob = new Blob([`${JSON.stringify(authEntryEvidence, null, 2)}\n`], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `pollar-sub-rosa-auth-entry-round-${authEntryEvidence.roundId}.json`;
   anchor.click();
   URL.revokeObjectURL(url);
 });

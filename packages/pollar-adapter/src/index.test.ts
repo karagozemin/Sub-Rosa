@@ -10,6 +10,7 @@ import {
   Transaction,
   TransactionBuilder,
   authorizeEntry,
+  hash,
   xdr,
 } from "@stellar/stellar-sdk";
 
@@ -62,6 +63,21 @@ function unsignedAuthEntry(address = wallet.publicKey()): xdr.SorobanAuthorizati
       subInvocations: [],
     }),
   });
+}
+
+function authPreimage(
+  expiration = 1_100,
+  networkPassphrase = Networks.TESTNET,
+): xdr.HashIdPreimage {
+  const entry = unsignedAuthEntry();
+  return xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
+    new xdr.HashIdPreimageSorobanAuthorization({
+      networkId: hash(Buffer.from(networkPassphrase)),
+      nonce: entry.credentials().address().nonce(),
+      signatureExpirationLedger: expiration,
+      invocation: entry.rootInvocation(),
+    }),
+  );
 }
 
 function pollarClient(overrides: Partial<PollarSigningClient> = {}): PollarSigningClient {
@@ -138,15 +154,29 @@ test("signs an authorization entry using a fresh live-ledger expiration", async 
   const signer = createPollarSubRosaSigner({
     pollar,
     ledgerReader,
-    authEntryLedgerTtl: 75,
+    authEntryLedgerTtl: 100,
   });
-  const result = await signer.signAuthEntry(unsignedAuthEntry().toXDR("base64"), {
-    address: wallet.publicKey(),
-    networkPassphrase: Networks.TESTNET,
-  });
+  const entry = unsignedAuthEntry();
+  const signed = await authorizeEntry(
+    entry,
+    async (preimage) => {
+      const result = await signer.signAuthEntry(preimage.toXDR("base64"), {
+        address: wallet.publicKey(),
+        networkPassphrase: Networks.TESTNET,
+      });
+      assert.equal(result.signerAddress, wallet.publicKey());
+      return {
+        publicKey: result.signerAddress,
+        signature: Buffer.from(result.signedAuthEntry, "base64"),
+      };
+    },
+    1_075,
+    Networks.TESTNET,
+  );
 
   assert.equal(expiration, 1_075);
-  assert.equal(result.signerAddress, wallet.publicKey());
+  assert.equal(signed.credentials().address().signatureExpirationLedger(), 1_075);
+  assert.notEqual(signed.credentials().address().signature().switch().name, "scvVoid");
 });
 
 test("rejects malformed transaction XDR before calling Pollar", async () => {
@@ -228,6 +258,12 @@ test("rejects a mainnet Pollar client and callback network mismatch", async () =
     signer.signTransaction(unsignedTransaction().toXDR(), { networkPassphrase: Networks.PUBLIC }),
     expectCode("POLLAR_NETWORK_MISMATCH"),
   );
+  await assert.rejects(
+    signer.signAuthEntry(authPreimage(1_075, Networks.PUBLIC).toXDR("base64"), {
+      networkPassphrase: Networks.TESTNET,
+    }),
+    expectCode("POLLAR_NETWORK_MISMATCH"),
+  );
 });
 
 test("rejects unready, missing, and smart wallets", () => {
@@ -280,7 +316,7 @@ test("preserves Pollar policy errors including backend code", async () => {
     ledgerReader,
   });
   await assert.rejects(
-    signer.signAuthEntry(unsignedAuthEntry().toXDR("base64")),
+    signer.signAuthEntry(authPreimage(1_075).toXDR("base64")),
     (error) =>
       error instanceof PollarAdapterError &&
       error.code === "POLLAR_SIGNING_REJECTED" &&
@@ -288,7 +324,7 @@ test("preserves Pollar policy errors including backend code", async () => {
   );
 });
 
-test("rejects an authorization signature with an unsafe ledger expiration", async () => {
+test("rejects an authorization signature that changes the requested expiration", async () => {
   const signer = createPollarSubRosaSigner({
     pollar: pollarClient({
       signAuthEntry: async (entryXdr) => ({
@@ -297,7 +333,7 @@ test("rejects an authorization signature with an unsafe ledger expiration", asyn
           await authorizeEntry(
             xdr.SorobanAuthorizationEntry.fromXDR(entryXdr, "base64"),
             wallet,
-            999,
+            1_074,
             Networks.TESTNET,
           )
         ).toXDR("base64"),
@@ -306,8 +342,59 @@ test("rejects an authorization signature with an unsafe ledger expiration", asyn
     ledgerReader,
   });
   await assert.rejects(
-    signer.signAuthEntry(unsignedAuthEntry().toXDR("base64")),
+    signer.signAuthEntry(authPreimage(1_075).toXDR("base64")),
     expectCode("SIGNED_PAYLOAD_MISMATCH"),
+  );
+});
+
+test("rejects an expired or excessively long authorization request before Pollar", async () => {
+  let calls = 0;
+  const signer = createPollarSubRosaSigner({
+    pollar: pollarClient({
+      signAuthEntry: async () => {
+        calls += 1;
+        return { status: "error", details: "should not run" };
+      },
+    }),
+    ledgerReader,
+  });
+  await assert.rejects(
+    signer.signAuthEntry(authPreimage(1_000).toXDR("base64")),
+    expectCode("SIGNED_PAYLOAD_MISMATCH"),
+  );
+  await assert.rejects(
+    signer.signAuthEntry(authPreimage(1_101).toXDR("base64")),
+    expectCode("SIGNED_PAYLOAD_MISMATCH"),
+  );
+  assert.equal(calls, 0);
+});
+
+test("rejects malformed authorization preimage XDR before Pollar", async () => {
+  let calls = 0;
+  const signer = createPollarSubRosaSigner({
+    pollar: pollarClient({
+      signAuthEntry: async () => {
+        calls += 1;
+        return { status: "error", details: "should not run" };
+      },
+    }),
+    ledgerReader,
+  });
+  await assert.rejects(
+    signer.signAuthEntry(unsignedAuthEntry().toXDR("base64")),
+    expectCode("MALFORMED_AUTH_ENTRY_XDR"),
+  );
+  assert.equal(calls, 0);
+});
+
+test("rejects a different requested authorization signer", async () => {
+  const signer = createPollarSubRosaSigner({ pollar: pollarClient(), ledgerReader });
+  await assert.rejects(
+    signer.signAuthEntry(authPreimage(1_075).toXDR("base64"), {
+      address: other.publicKey(),
+      networkPassphrase: Networks.TESTNET,
+    }),
+    expectCode("SIGNER_MISMATCH"),
   );
 });
 

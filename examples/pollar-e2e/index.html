@@ -11,7 +11,7 @@
       <header>
         <p class="eyebrow">LOCAL TESTNET VERIFICATION</p>
         <h1>Pollar × Sub Rosa</h1>
-        <p class="lede">Authenticate with a real Pollar G-wallet, approve five Soroban transactions, and export public ReceiptOnly evidence.</p>
+        <p class="lede">Authenticate with a real Pollar G-wallet, run the ReceiptOnly lifecycle, and verify a standalone Soroban authorization entry.</p>
       </header>
 
       <section id="config-card" class="card">
@@ -63,6 +63,20 @@
         <div class="card-heading"><span>04</span><h2>Verified public evidence</h2></div>
         <div id="evidence"></div>
         <button id="download-evidence" type="button">Download evidence JSON</button>
+      </section>
+
+      <section class="card">
+        <div class="card-heading"><span>05</span><h2>Run standalone signAuthEntry proof</h2></div>
+        <p>A Friendbot-funded in-memory account pays the testnet fee. The Pollar wallet separately authorizes <code>create_partner_round_v2</code> as the non-source operator.</p>
+        <p class="hint">The sponsor secret never leaves memory and cannot authorize for the Pollar wallet. Pollar must allow testnet contract <code>CCOVGOQQZJKZ2R55GRWBLTJTGBAMSHXZVN3ICPG3WRVMLMM6RHISC5OV</code>, function <code>create_partner_round_v2</code>, for this application. No wildcard is needed.</p>
+        <button id="run-auth-entry" type="button" disabled>Run real Pollar signAuthEntry test</button>
+        <div class="progress"><span id="auth-entry-stage">idle</span><p id="auth-entry-message">Authenticate a ready G-address to begin.</p></div>
+      </section>
+
+      <section id="auth-entry-evidence-card" class="card" hidden>
+        <div class="card-heading"><span>06</span><h2>Verified auth-entry evidence</h2></div>
+        <div id="auth-entry-evidence"></div>
+        <button id="download-auth-entry-evidence" type="button">Download auth-entry evidence JSON</button>
       </section>
     </main>
     <script type="module" src="/src/main.ts"></script>

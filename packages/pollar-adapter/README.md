@@ -9,9 +9,11 @@ existing Sub Rosa SDK. The first release target is deliberately narrow:
 - self-paid transactions (`skipSponsorship: true`)
 - no changes to Pollar core and no automatic activation
 
-The package is currently release-gated (`private: true`) until a real Pollar
-account completes the published testnet lifecycle and the resulting hashes are
-recorded. Unit tests are not presented as integration proof.
+The package is currently release-gated (`private: true`). A real Pollar account
+completed the five-write ReceiptOnly lifecycle and produced the public Round 33
+evidence recorded in `docs/SCF46_POLLAR_INTEGRATION_EVIDENCE.md`. Standalone
+`signAuthEntry` verification is separately gated by the Pollar application's
+Soroban auth-entry allowlist. Unit tests are not presented as integration proof.
 
 ## Install
 
@@ -59,15 +61,15 @@ Sub Rosa submits the signed envelope exactly once through its normal RPC path.
 - The source account and Ed25519 signature match the active Pollar wallet.
 - Soroban authorization entries retain the same address and invocation tree.
 - Authorization expiry is requested from the latest testnet ledger (default
-  +100); an external Pollar wallet may choose a different expiry, which is
-  accepted only inside a bounded live-ledger window.
+  +100) and must be returned unchanged inside the bounded live-ledger window.
 - `cosign_pending` and Pollar policy failures are explicit errors.
 
-Pollar's embedded auth-entry path can enforce application contract/function
-policy. A rejection is preserved as `PollarAdapterError`, including Pollar's
-backend error code when supplied. Oscar confirmed to the project team that
-arbitrary Soroban contract transactions are supported; the live test remains
-the release criterion.
+Pollar's embedded auth-entry path enforces an application contract/function
+policy independently of transaction-signing policy. A rejection is preserved
+as `PollarAdapterError`, including Pollar's backend error code when the public
+SDK supplies it. Pollar core 0.12 currently reduces some HTTP error responses to
+a generic signing rejection, so the browser network response can contain a more
+specific operator code.
 
 ## Live ReceiptOnly proof
 
@@ -88,6 +90,19 @@ The harness creates a Pollar-signed ReceiptOnly round, commits a sealed
 proposal, waits for Drand, opens, reveals, clears, verifies the canonical
 receipt, and prints each public testnet transaction hash. It rejects substitute
 signers and contains no secret-key fallback.
+
+The same browser runner includes a standalone authorization-entry proof. A
+Friendbot-funded transient account pays the envelope fee, while the authenticated
+Pollar G-address separately authorizes `create_partner_round_v2` as the non-source
+operator. Before running it, the Pollar application must allow exactly:
+
+- network: Stellar testnet
+- contract: `CCOVGOQQZJKZ2R55GRWBLTJTGBAMSHXZVN3ICPG3WRVMLMM6RHISC5OV`
+- function: `create_partner_round_v2`
+- authorization expiry: at least 80 ledgers; the runner requests 80
+
+Do not use a wildcard policy. If this application-level control is not exposed
+in the dashboard, ask the Pollar operator to configure it for the application.
 
 ## Development
 
@@ -118,5 +133,8 @@ cd packages/pollar-adapter && npm pack --dry-run
   co-sign UI, then retry with an automatically settled signing configuration.
 - `POLLAR_SIGNING_REJECTED`: inspect `pollarCode`; for embedded wallets confirm
   the Sub Rosa contract/functions are enabled by the Pollar application policy.
+- HTTP 403 `SOROBAN_AUTH_NO_POLICY`: the `signAuthEntry` request reached Pollar,
+  but the application has no Soroban auth-entry allowlist. Add the least-privilege
+  contract/function tuple above and retry; this is not an XDR or signer failure.
 - `FEE_BUMP_UNSUPPORTED`: keep `skipSponsorship: true` and fund the testnet
   Pollar account; the initial adapter does not unwrap sponsored envelopes.

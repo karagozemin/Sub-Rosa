@@ -7,7 +7,8 @@ import {
   StrKey,
   Transaction,
   TransactionBuilder,
-  rpc,
+  hash,
+  scValToNative,
   xdr,
 } from "@stellar/stellar-sdk";
 import type {
@@ -66,6 +67,28 @@ export class PollarAdapterError extends Error {
 
 export interface LatestLedgerReader {
   getLatestLedger(): Promise<{ sequence: number }>;
+}
+
+class JsonRpcLatestLedgerReader implements LatestLedgerReader {
+  constructor(private readonly rpcUrl: string) {}
+
+  async getLatestLedger(): Promise<{ sequence: number }> {
+    const response = await fetch(this.rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getLatestLedger", params: {} }),
+    });
+    if (!response.ok) throw new Error(`Stellar RPC returned HTTP ${response.status}`);
+    const payload = await response.json() as {
+      result?: { sequence?: unknown };
+      error?: { message?: string };
+    };
+    const sequence = payload.result?.sequence;
+    if (!Number.isSafeInteger(sequence) || (sequence as number) <= 0) {
+      throw new Error(payload.error?.message ?? "Stellar RPC returned an invalid latest ledger sequence");
+    }
+    return { sequence: sequence as number };
+  }
 }
 
 export interface PollarSignerConfig {
@@ -291,6 +314,51 @@ function parseAuthEntryXdr(value: string, label: string): xdr.SorobanAuthorizati
   }
 }
 
+function parseAuthPreimageXdr(value: string): xdr.HashIdPreimage {
+  let preimage: xdr.HashIdPreimage;
+  try {
+    preimage = xdr.HashIdPreimage.fromXDR(value, "base64");
+  } catch (cause) {
+    throw adapterError(
+      "MALFORMED_AUTH_ENTRY_XDR",
+      "authEntry is not a valid Soroban authorization preimage XDR.",
+      cause,
+    );
+  }
+  if (preimage.switch().name !== "envelopeTypeSorobanAuthorization") {
+    throw adapterError(
+      "MALFORMED_AUTH_ENTRY_XDR",
+      "authEntry is not a Soroban authorization preimage.",
+    );
+  }
+  const expectedNetworkId = hash(Buffer.from(Networks.TESTNET));
+  if (!preimage.sorobanAuthorization().networkId().equals(expectedNetworkId)) {
+    throw adapterError(
+      "POLLAR_NETWORK_MISMATCH",
+      "The Soroban authorization preimage is not bound to Stellar testnet.",
+    );
+  }
+  return preimage;
+}
+
+function unsignedEntryFromPreimage(
+  preimage: xdr.HashIdPreimage,
+  address: string,
+): xdr.SorobanAuthorizationEntry {
+  const authorization = preimage.sorobanAuthorization();
+  return new xdr.SorobanAuthorizationEntry({
+    credentials: xdr.SorobanCredentials.sorobanCredentialsAddress(
+      new xdr.SorobanAddressCredentials({
+        address: Address.fromString(address).toScAddress(),
+        nonce: authorization.nonce(),
+        signatureExpirationLedger: 0,
+        signature: xdr.ScVal.scvVoid(),
+      }),
+    ),
+    rootInvocation: authorization.invocation(),
+  });
+}
+
 function authEntryAddress(entry: xdr.SorobanAuthorizationEntry): string {
   const credentials = entry.credentials();
   if (credentials.switch().name !== "sorobanCredentialsAddress") {
@@ -303,12 +371,13 @@ function authEntryAddress(entry: xdr.SorobanAuthorizationEntry): string {
 }
 
 function verifySignedAuthEntry(
-  unsignedXdr: string,
+  unsigned: xdr.SorobanAuthorizationEntry,
   signedXdr: string,
   address: string,
+  preimage: xdr.HashIdPreimage,
   currentLedger: number,
-): void {
-  const unsigned = parseAuthEntryXdr(unsignedXdr, "entryXdr");
+  maxExpirationLedger: number,
+): Buffer {
   const signed = parseAuthEntryXdr(signedXdr, "Pollar signedAuthEntry");
   if (authEntryAddress(unsigned) !== address || authEntryAddress(signed) !== address) {
     throw adapterError(
@@ -322,9 +391,24 @@ function verifySignedAuthEntry(
       "Pollar returned a signature for a different Soroban invocation tree.",
     );
   }
+  const authorization = preimage.sorobanAuthorization();
+  const unsignedCredentials = unsigned.credentials().address();
   const signedCredentials = signed.credentials().address();
   const signedExpiration = signedCredentials.signatureExpirationLedger();
-  if (signedExpiration <= currentLedger || signedExpiration > currentLedger + 1_000) {
+  if (
+    unsignedCredentials.nonce().toString() !== signedCredentials.nonce().toString() ||
+    signedCredentials.nonce().toString() !== authorization.nonce().toString()
+  ) {
+    throw adapterError(
+      "SIGNED_PAYLOAD_MISMATCH",
+      "Pollar returned a signature for a different Soroban authorization nonce.",
+    );
+  }
+  if (
+    signedExpiration !== authorization.signatureExpirationLedger() ||
+    signedExpiration <= currentLedger ||
+    signedExpiration > maxExpirationLedger
+  ) {
     throw adapterError(
       "SIGNED_PAYLOAD_MISMATCH",
       "The signed authorization entry expiration is outside the adapter's safe live-ledger window.",
@@ -336,6 +420,28 @@ function verifySignedAuthEntry(
       "Pollar returned an authorization entry without a signature.",
     );
   }
+  const signatures = scValToNative(signedCredentials.signature()) as unknown;
+  if (!Array.isArray(signatures) || signatures.length !== 1) {
+    throw adapterError(
+      "SIGNER_MISMATCH",
+      "Pollar returned an authorization entry with an unsupported signature shape.",
+    );
+  }
+  const signatureRecord = signatures[0] as Record<string, unknown>;
+  const publicKey = Buffer.from(signatureRecord.public_key as Uint8Array);
+  const signature = Buffer.from(signatureRecord.signature as Uint8Array);
+  if (
+    publicKey.length !== 32 ||
+    signature.length !== 64 ||
+    !publicKey.equals(StrKey.decodeEd25519PublicKey(address)) ||
+    !Keypair.fromPublicKey(address).verify(hash(preimage.toXDR()), signature)
+  ) {
+    throw adapterError(
+      "SIGNER_MISMATCH",
+      "The signed authorization entry does not contain a valid signature from the active Pollar wallet.",
+    );
+  }
+  return signature;
 }
 
 async function latestLedgerExpiration(
@@ -376,7 +482,12 @@ export function createPollarSubRosaSigner(config: PollarSignerConfig): PollarSub
   }
 
   const publicKey = assertWallet(config.pollar);
-  const ledgerReader = config.ledgerReader ?? new rpc.Server(config.rpcUrl ?? DEFAULT_TESTNET_RPC);
+  // Read only the JSON sequence. Newer Stellar protocols can add header-XDR
+  // variants that older SDK parsers do not understand even though the sequence
+  // remains stable and sufficient for an auth-entry expiry calculation.
+  const ledgerReader = config.ledgerReader ?? new JsonRpcLatestLedgerReader(
+    config.rpcUrl ?? DEFAULT_TESTNET_RPC,
+  );
 
   const signTransaction: SignTransaction = async (unsignedXdr, options) => {
     assertTestnetPassphrase(options?.networkPassphrase);
@@ -413,16 +524,20 @@ export function createPollarSubRosaSigner(config: PollarSignerConfig): PollarSub
     if (options?.address !== undefined && options.address !== address) {
       throw adapterError("SIGNER_MISMATCH", "Sub Rosa requested a different authorization signer.");
     }
-    const entry = parseAuthEntryXdr(entryXdr, "entryXdr");
-    if (authEntryAddress(entry) !== address) {
+    const preimage = parseAuthPreimageXdr(entryXdr);
+    const entry = unsignedEntryFromPreimage(preimage, address);
+    const { currentLedger, validUntilLedger: maxExpirationLedger } =
+      await latestLedgerExpiration(ledgerReader, ttl);
+    const requestedExpiration = preimage.sorobanAuthorization().signatureExpirationLedger();
+    if (requestedExpiration <= currentLedger || requestedExpiration > maxExpirationLedger) {
       throw adapterError(
-        "SIGNER_MISMATCH",
-        "The authorization entry address does not match the active Pollar wallet.",
+        "SIGNED_PAYLOAD_MISMATCH",
+        "The requested authorization expiration is outside the adapter's safe live-ledger window.",
       );
     }
-
-    const { currentLedger, validUntilLedger } = await latestLedgerExpiration(ledgerReader, ttl);
-    const outcome = await config.pollar.signAuthEntry(entryXdr, { validUntilLedger });
+    const outcome = await config.pollar.signAuthEntry(entry.toXDR("base64"), {
+      validUntilLedger: requestedExpiration,
+    });
     if (outcome.status === "error") {
       throw new PollarAdapterError(
         "POLLAR_SIGNING_REJECTED",
@@ -430,11 +545,17 @@ export function createPollarSubRosaSigner(config: PollarSignerConfig): PollarSub
         { pollarCode: outcome.code },
       );
     }
-    // Pollar's embedded signer uses the requested expiration. External Pollar
-    // wallet adapters may choose their own expiration, so validate the signed
-    // entry against a bounded live-ledger window instead of assuming equality.
-    verifySignedAuthEntry(entryXdr, outcome.signedAuthEntry, address, currentLedger);
-    return { signedAuthEntry: outcome.signedAuthEntry, signerAddress: address };
+    const signature = verifySignedAuthEntry(
+      entry,
+      outcome.signedAuthEntry,
+      address,
+      preimage,
+      currentLedger,
+      maxExpirationLedger,
+    );
+    // @stellar/stellar-sdk's SignAuthEntry callback consumes the raw signature,
+    // while Pollar signs and returns a complete SorobanAuthorizationEntry.
+    return { signedAuthEntry: signature.toString("base64"), signerAddress: address };
   };
 
   return { publicKey, signTransaction, signAuthEntry };

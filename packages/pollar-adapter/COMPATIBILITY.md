@@ -7,7 +7,9 @@ Validated against `@pollar/core@0.12.0`, `@sub-rosa/sdk@0.3.2`, and
 
 - Pollar internal or external classic Stellar G-address wallets.
 - Pollar `signTx` with `skipSponsorship: true`.
-- Pollar `signAuthEntry` with expiration derived from live testnet ledger data.
+- Pollar `signAuthEntry` callback adaptation with expiration derived from live
+  testnet ledger data. Live backend signing additionally requires the Pollar
+  application's Soroban auth-entry allowlist.
 - Sub Rosa Core v2/v3 ReceiptOnly creation and zero-escrow submissions.
 - Existing Sub Rosa open, reveal, clear, export and receipt-verification APIs.
 
@@ -24,8 +26,16 @@ Validated against `@pollar/core@0.12.0`, `@sub-rosa/sdk@0.3.2`, and
 
 - Pollar returns `{ status: "signed", signedXdr }`; Sub Rosa expects
   `{ signedTxXdr, signerAddress }`. The adapter validates and normalizes it.
-- Pollar auth signing requires `validUntilLedger`; the Stellar contract callback
-  does not supply it. The adapter obtains the current ledger from testnet RPC.
+- Pollar accepts a complete unsigned authorization entry and returns a complete
+  signed entry. Stellar SDK's callback instead supplies a network-bound
+  authorization preimage and consumes raw signature bytes. The adapter performs
+  that conversion and verifies the returned Ed25519 signature.
+- Pollar auth signing requires `validUntilLedger`. The adapter checks the
+  callback's requested expiration against the current testnet ledger and a
+  bounded maximum before sending it to Pollar.
+- The current testnet RPC uses protocol 30 header XDR that stellar-sdk 15.1.0
+  cannot fully decode. Ledger-expiration reads therefore parse only the numeric
+  `getLatestLedger.result.sequence` JSON field.
 - Pollar can return `cosign_pending`; this is surfaced as a typed error instead
   of being treated as a completed signature.
 - External Pollar wallets may choose their own auth-entry expiry. It is accepted
@@ -34,11 +44,16 @@ Validated against `@pollar/core@0.12.0`, `@sub-rosa/sdk@0.3.2`, and
 
 ## External status
 
-Oscar's arbitrary Soroban signing capability confirmation is recorded as
-partner evidence. Actual interoperability is still release-gated on a READY,
-authenticated Pollar testnet session completing the reproducible lifecycle.
-No such session or Pollar API credential is present in this workspace, so no
-transaction hash or receipt is claimed yet.
+Oscar's arbitrary Soroban transaction-signing capability confirmation is
+recorded as partner evidence. A READY authenticated Pollar G-address completed
+the full ReceiptOnly lifecycle in Round 33, proving live `signTx` interoperability.
+
+The standalone auth-entry runner also reached Pollar's real
+`/tx/sign-auth-entry` endpoint with a valid simulated Sub Rosa invocation. Pollar
+returned HTTP 403 `SOROBAN_AUTH_NO_POLICY` because application
+`cmw2xdouj00010itcvg44jdl0` (`subrosa`) has no Soroban auth-entry allowlist.
+No auth-entry transaction was submitted. This is an external application-policy
+gate, not an adapter, account, network, signer, or XDR failure.
 
 The repository includes `examples/pollar-e2e`, which uses Pollar's real browser
 session, DPoP key manager, email/OAuth/classic-wallet login and confirmation

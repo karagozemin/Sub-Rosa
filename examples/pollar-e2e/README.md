@@ -17,6 +17,14 @@ secret-key signer and no fallback wallet.
    immediate account funding. A Pollar G-wallet must exist on testnet and hold
    enough testnet XLM to pay five Soroban fees because the adapter deliberately
    disables fee sponsorship in its first release.
+6. For the separate **signAuthEntry** proof, configure the application's
+   Soroban authorization allowlist for Stellar testnet with only:
+   - contract `CCOVGOQQZJKZ2R55GRWBLTJTGBAMSHXZVN3ICPG3WRVMLMM6RHISC5OV`
+   - function `create_partner_round_v2`
+
+   The proof requests an 80-ledger expiry. Do not enable a wildcard. If the
+   dashboard does not expose this control, send the tuple and your Pollar
+   application ID to the Pollar operator for configuration.
 
 ## Local configuration
 
@@ -61,6 +69,9 @@ Open `http://127.0.0.1:4175` in the same browser you will use for login.
 7. Download the resulting evidence JSON. It contains only public testnet data:
    signer address, contract/round IDs, transaction hashes, RPC statuses,
    receipt hash, and verification status.
+8. Press **Run real Pollar signAuthEntry test** for the independent non-source
+   authorization proof. The transient sponsor secret stays in memory and can
+   sign only the fee envelope; the Pollar wallet must sign its own auth entry.
 
 DPoP keys and session tokens remain in Pollar's browser storage/key manager for
 this origin. The UI never assigns the client to `window`, never renders tokens,
@@ -75,6 +86,11 @@ The UI reports a sanitized category and SDK code:
 - `network`: CORS, timeout, RPC, Horizon, or wrong-network issue
 - `XDR/signature`: malformed XDR, fee bump, changed payload, or wrong signer
 - `Pollar API/auth`: API key, origin, OTP, session, or authentication failure
+
+An HTTP 403 `SOROBAN_AUTH_NO_POLICY` response at `sign_auth_entry` means the
+request reached Pollar but the selected application has no Soroban auth-entry
+allowlist. Configure the exact tuple above and rerun. No Stellar transaction is
+submitted when signing is rejected.
 
 There is no alternate signer. A failure must be fixed at its actual source and
 the real Pollar flow rerun.

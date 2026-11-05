@@ -14,6 +14,14 @@ import {
 
 import { createPollarSubRosaClient } from "./index.js";
 
+export {
+  runPollarAuthEntryTestnet,
+  type PollarAuthEntryEvidence,
+  type PollarAuthEntryProgress,
+  type PollarAuthEntryStage,
+  type PollarAuthEntryTestOptions,
+} from "./testnet-auth-entry.js";
+
 export type PollarTestnetStage =
   | "preflight"
   | "create_round"
