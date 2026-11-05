@@ -6,6 +6,11 @@ Last updated: 2026-11-05
 
 **Working local adapter; live Pollar-signed testnet proof pending credentials.**
 
+- Implementation commit: https://github.com/karagozemin/Sub-Rosa/commit/03cb8ec
+- Review PR: https://github.com/karagozemin/Sub-Rosa/pull/1
+- npm package: not published; `@sub-rosa/pollar-adapter` returned no public
+  registry version on 2026-11-05.
+
 This document deliberately distinguishes implementation from validation,
 publication, listing, and adoption. A local unit test is not a Pollar-signed
 testnet transaction.
