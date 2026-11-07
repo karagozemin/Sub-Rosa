@@ -50,6 +50,7 @@
   justify-content: space-between;
   width: 100%;
   margin-bottom: 58px;
+  gap: 12px;
 }
 
 .pilot-catalog-card-topline .pilot-catalog-card-index {
@@ -68,6 +69,7 @@
   font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  text-align: center;
 }
 
 .pilot-catalog-card-status.live {
@@ -146,7 +148,7 @@
 .pilot-catalog-card {
   position: relative;
   display: flex;
-  min-height: 390px;
+  min-height: 430px;
   overflow: hidden;
   border: 1px solid var(--line-1);
   border-radius: 10px;
@@ -166,7 +168,8 @@
   pointer-events: none;
 }
 
-.pilot-catalog-card:hover {
+.pilot-catalog-card:hover,
+.pilot-catalog-card:focus-within {
   transform: translateY(-4px);
   border-color: rgba(91, 108, 255, 0.48);
   box-shadow: 0 16px 38px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(91, 108, 255, 0.12);
@@ -207,19 +210,47 @@
 }
 
 .pilot-catalog-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   margin-top: auto;
   padding-top: 24px;
   color: var(--faint);
+}
+
+.pilot-catalog-card-meta span {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid var(--line-1);
+  border-radius: 999px;
+  background: rgba(6, 9, 14, 0.44);
+}
+
+.pilot-catalog-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  margin-top: 18px;
 }
 
 .pilot-catalog-card-action {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: 18px;
-  color: var(--ink-2);
+  color: var(--muted);
   font-size: 0.88rem;
   font-weight: 650;
+}
+
+.pilot-catalog-card-action.primary {
+  color: var(--ink-2);
+}
+
+.pilot-catalog-card-action.secondary {
+  font-size: 0.76rem;
 }
 
 .pilot-catalog-card-action svg {
@@ -293,7 +324,7 @@
   }
 
   .pilot-catalog-card {
-    min-height: 270px;
+    min-height: 330px;
   }
 
   .pilot-catalog-card-topline {

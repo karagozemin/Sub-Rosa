@@ -928,6 +928,19 @@
 }
 
 @media (max-width: 980px) {
+  .signal-pilot-nav {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding-inline: 24px;
+  }
+
+  .signal-pilot-nav-actions {
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
   .signal-pilot-hero {
     align-items: flex-start;
     flex-direction: column;

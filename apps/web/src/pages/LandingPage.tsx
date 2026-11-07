@@ -1,6 +1,12 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { DEMO_TRACE } from "../demo/trace";
 import { USE_CASES, type UseCaseId } from "../config/useCases";
+import {
+  ADDITIONAL_ECOSYSTEM_PARTNERS,
+  FEATURED_ECOSYSTEM_PARTNERS,
+  type EcosystemLink,
+  type EcosystemPartner,
+} from "../config/ecosystem";
 import { LOGO_SRC } from "../config/brand";
 import { shortAddr } from "../lib/format";
 
@@ -19,77 +25,78 @@ const staggerParent = {
   },
 };
 
-interface PilotPartner {
-  id: "stelhacks" | "offer-hub" | "cosmos-pay" | "octarine";
-  name: string;
-  status: string;
-  meta: string;
-  description: string;
-  logo: string;
-  href?: string;
+function linkTarget(link: EcosystemLink) {
+  return link.external ? { target: "_blank", rel: "noreferrer" } : {};
 }
 
-const PILOT_PARTNERS: PilotPartner[] = [
-  {
-    id: "stelhacks",
-    name: "StelHacks",
-    status: "Real integration",
-    meta: "Hackathon judging",
-    description:
-      "Jury scorecards and community ballots stay time-lock encrypted until judging closes, then reveal together with verifiable evidence.",
-    logo: "/pilots/stelhacks/stelhacks-logo.png",
-    href: "https://github.com/emirykl/StelHacks/blob/main/frontend/lib/sealed-input.ts#L1-L49",
-  },
-  {
-    id: "offer-hub",
-    name: "OFFER HUB",
-    status: "Real integration",
-    meta: "Freelancer proposals",
-    description:
-      "Price, timeline, and approach stay sealed until the shared deadline, then every proposal reveals together for client selection.",
-    logo: "/pilots/offer-hub/offer-hub.jpg",
-    href: "https://github.com/karagozemin/OFFER-HUB-Frontend/blob/feat/sub-rosa-sealed-proposals/src/features/sub-rosa/live/operations.ts#L64-L174",
-  },
-  {
-    id: "cosmos-pay",
-    name: "Cosmos Pay",
-    status: "Integration PR",
-    meta: "Private RFQs · SEP-7",
-    description:
-      "Cosmos Pay verifies Sub Rosa sealed-quote rounds, reveals provider proposals together, and hands the selected quote to its existing non-custodial payment-intent flow.",
-    logo: "/pilots/cosmos-pay/cosmos-pay-logo.png",
-    href: "https://github.com/CosmosPay/CosmosPay-Community-Server/pull/91",
-  },
-  {
-    id: "octarine",
-    name: "Octarine",
-    status: "Real Integration Process",
-    meta: "SCF #44 · RWA liquidity",
-    description:
-      "A planned sealed RFQ layer for RWA liquidity, keeping LP quotes private until the deadline before revealing them together for price selection.",
-    logo: "/pilots/octarine/octarine-logo.svg",
-  },
-];
+function PartnerLogo({ partner }: { partner: EcosystemPartner }) {
+  return (
+    <div className={`landing-partner-logo ${partner.id}`}>
+      {partner.logo ? (
+        <img src={partner.logo} alt={`${partner.name} logo`} loading="lazy" />
+      ) : (
+        <span className="landing-partner-mark" aria-hidden="true">{partner.mark}</span>
+      )}
+    </div>
+  );
+}
 
-function PartnerCardContent({ partner }: { partner: PilotPartner }) {
+function PartnerCardContent({ partner }: { partner: EcosystemPartner }) {
   return (
     <>
-      <div className={`landing-partner-logo ${partner.id}`}>
-        <img src={partner.logo} alt={`${partner.name} logo`} />
-      </div>
+      <PartnerLogo partner={partner} />
       <div className="landing-partner-card-body">
         <div className="landing-partner-card-topline">
-          <span className={partner.href ? "real" : "planned"}>{partner.status}</span>
+          <span className={partner.statusTone}>{partner.statusLabel}</span>
           <small>{partner.meta}</small>
         </div>
         <h3>{partner.name}</h3>
         <p>{partner.description}</p>
-        <span className={`landing-partner-card-cta ${partner.href ? "" : "static"}`}>
-          {partner.href ? "View integration" : "Partner workflow in design"}
-          {partner.href ? <span aria-hidden="true">↗</span> : null}
-        </span>
+        <div className="landing-partner-card-actions">
+          <a
+            className="landing-partner-card-cta primary"
+            href={partner.primaryLink.href}
+            {...linkTarget(partner.primaryLink)}
+          >
+            {partner.primaryLink.label}
+            <span aria-hidden="true">{partner.primaryLink.external ? "↗" : "→"}</span>
+          </a>
+          {partner.secondaryLink ? (
+            <a
+              className="landing-partner-card-cta"
+              href={partner.secondaryLink.href}
+              {...linkTarget(partner.secondaryLink)}
+            >
+              {partner.secondaryLink.label}
+              <span aria-hidden="true">{partner.secondaryLink.external ? "↗" : "→"}</span>
+            </a>
+          ) : null}
+        </div>
       </div>
     </>
+  );
+}
+
+function CompactPartner({ partner }: { partner: EcosystemPartner }) {
+  return (
+    <article className="ecosystem-compact-card">
+      <div className="ecosystem-compact-topline">
+        <span className={partner.statusTone}>{partner.statusLabel}</span>
+        <small>{partner.meta}</small>
+      </div>
+      <h3>{partner.name}</h3>
+      <p>{partner.description}</p>
+      <div className="ecosystem-compact-actions">
+        <a href={partner.primaryLink.href} {...linkTarget(partner.primaryLink)}>
+          {partner.primaryLink.label} <span aria-hidden="true">{partner.primaryLink.external ? "↗" : "→"}</span>
+        </a>
+        {partner.secondaryLink ? (
+          <a href={partner.secondaryLink.href} {...linkTarget(partner.secondaryLink)}>
+            {partner.secondaryLink.label} <span aria-hidden="true">{partner.secondaryLink.external ? "↗" : "→"}</span>
+          </a>
+        ) : null}
+      </div>
+    </article>
   );
 }
 
@@ -142,14 +149,14 @@ export function LandingPage({
         <motion.div className="hero-copy" variants={fadeUp} transition={transition}>
           <span className="hero-eyebrow">
             <span>SR</span>
-            Sealed auction settlement on Stellar
+            Sealed coordination infrastructure on Stellar
           </span>
           <motion.h1 variants={fadeUp} transition={transition}>
             Sealed auctions. <em>Settled on Stellar.</em>
           </motion.h1>
           <motion.p className="lede" variants={fadeUp} transition={transition}>
-            Bidders lock escrow, bids stay unreadable until Drand R, and Soroban settles the
-            winner while refunding losers.
+            Use Auction for escrow-backed on-chain settlement, or ReceiptOnly for sealed
+            coordination and verifiable outcomes without Sub Rosa holding funds.
           </motion.p>
           <motion.p className="hero-infra-line" variants={fadeUp} transition={transition}>
             Built as an embeddable Soroban contract, TypeScript SDK, tlock package, and
@@ -192,8 +199,8 @@ export function LandingPage({
               <strong>{DEMO_TRACE.keeper.contractBalanceFinal} USDC final</strong>
             </div>
             <div>
-              <span>Next milestone</span>
-              <strong>Named pilot</strong>
+              <span>Protocol modes</span>
+              <strong>Auction · ReceiptOnly</strong>
             </div>
           </motion.div>
         </motion.div>
@@ -267,16 +274,16 @@ export function LandingPage({
         transition={transition}
       >
         <div>
-          <span>SCF resubmission focus</span>
-          <h2>One wedge: escrow-backed sealed auctions.</h2>
+          <span>Two coordination modes</span>
+          <h2>Private until the deadline. Verifiable after it.</h2>
         </div>
         <p>
-          The next submission should include a named auction or competitive-bid pilot, public
-          testnet round receipts, and partner feedback.
+          <strong>Auction</strong> locks escrow, reveals bids at the shared boundary, settles the
+          winning exchange on Soroban, and refunds the rest.
         </p>
         <p>
-          Partners integrate the same audited round lifecycle through the SDK without replacing
-          their marketplace or product workflow.
+          <strong>ReceiptOnly</strong> seals proposals or assessments and produces a canonical,
+          verifiable outcome receipt while the application keeps selection and payment control.
         </p>
       </motion.section>
 
@@ -289,12 +296,12 @@ export function LandingPage({
           transition={transition}
         >
           <div>
-            <span>Real Integration Partners</span>
+            <span>Verified ecosystem activity</span>
             <h2 id="pilot-partners-title">Sub Rosa in partner workflows.</h2>
           </div>
           <p>
-            Real integrations use sealed coordination across judging, freelancer proposals, and
-            payments, while the next pilot extends the same primitive to RWA liquidity.
+            Published adapters, partner-owned code, hosted pilots, and proposed collaborations are
+            labeled separately—with direct evidence for every material claim.
           </p>
         </motion.div>
 
@@ -305,33 +312,31 @@ export function LandingPage({
           whileInView="show"
           viewport={{ once: true, margin: "-60px" }}
         >
-          {PILOT_PARTNERS.map((partner) =>
-            partner.href ? (
-              <motion.a
-                key={partner.id}
-                className="landing-partner-card linked"
-                href={partner.href}
-                target="_blank"
-                rel="noreferrer"
-                variants={fadeUp}
-                transition={transition}
-                whileHover={reduce ? undefined : { y: -4 }}
-                whileTap={reduce ? undefined : { scale: 0.99 }}
-              >
-                <PartnerCardContent partner={partner} />
-              </motion.a>
-            ) : (
-              <motion.article
-                key={partner.id}
-                className="landing-partner-card"
-                variants={fadeUp}
-                transition={transition}
-              >
-                <PartnerCardContent partner={partner} />
-              </motion.article>
-            ),
-          )}
+          {FEATURED_ECOSYSTEM_PARTNERS.map((partner) => (
+            <motion.article
+              key={partner.id}
+              className="landing-partner-card linked"
+              variants={fadeUp}
+              transition={transition}
+              whileHover={reduce ? undefined : { y: -4 }}
+            >
+              <PartnerCardContent partner={partner} />
+            </motion.article>
+          ))}
         </motion.div>
+
+        <details className="ecosystem-disclosure">
+          <summary>
+            <span>View all integrations &amp; collaborations</span>
+            <small>{ADDITIONAL_ECOSYSTEM_PARTNERS.length} additional pilots and collaboration paths</small>
+            <i aria-hidden="true">⌄</i>
+          </summary>
+          <div className="ecosystem-compact-grid">
+            {ADDITIONAL_ECOSYSTEM_PARTNERS.map((partner) => (
+              <CompactPartner key={partner.id} partner={partner} />
+            ))}
+          </div>
+        </details>
       </section>
 
       <section className="landing-cases-section">
@@ -342,10 +347,10 @@ export function LandingPage({
           viewport={{ once: true, margin: "-80px" }}
           transition={transition}
         >
-          <h2>Run a sealed auction round.</h2>
+          <h2>Explore the sealed-round lifecycle.</h2>
           <p>
-            The demo follows the funds path reviewers care about: escrow is locked before reveal,
-            bids open together, the winner pays, and losers are refunded.
+            The interactive demo follows the Auction funds path: escrow locks before reveal, bids
+            open together, the winner pays, and losing bidders are refunded.
           </p>
         </motion.div>
 

@@ -10,9 +10,9 @@ type PasskeyStatus = "idle" | "loading" | "ready" | "blocked" | "error";
 
 const LINKS = [
   {
-    label: "Passkey-Kit (legacy demo)",
-    href: "https://passkey-kit-demo.pages.dev/",
-    note: "WebAuthn smart wallet precursor; session keys map to our mandate pattern.",
+    label: "Passkey Kit",
+    href: "https://github.com/stellar/passkey-kit",
+    note: "Current WebAuthn smart-wallet SDK and demo source; session keys map to our mandate pattern.",
   },
   {
     label: "Smart Account Kit",
@@ -26,7 +26,7 @@ const LINKS = [
   },
   {
     label: "Scaffold Stellar",
-    href: "https://github.com/thebadass-dev/scaffold-stellar",
+    href: "https://github.com/stellar-scaffold/cli",
     note: "App scaffold for Stellar dApps; swap in smart-account-kit for passkey principals.",
   },
 ];

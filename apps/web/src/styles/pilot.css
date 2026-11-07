@@ -402,6 +402,42 @@
   }
 }
 
+@media (min-width: 721px) and (max-width: 860px) {
+  .pilot-nav {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding-inline: 24px;
+  }
+
+  .pilot-nav-actions {
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .pilot-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .pilot-partner-identity {
+    justify-items: stretch;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .pilot-template-switch {
+    align-self: flex-start;
+    max-width: 100%;
+  }
+
+  .pilot-partner-mark {
+    justify-self: end;
+  }
+}
+
 @media (max-width: 720px) {
   .pilot-page {
     padding-bottom: 32px;

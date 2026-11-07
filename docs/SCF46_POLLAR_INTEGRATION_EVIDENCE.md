@@ -26,7 +26,7 @@ testnet transaction.
 | Real Pollar testnet lifecycle | Verified | Round 33 completed through the interactive runner with the authenticated READY Pollar G-address below. All five hashes independently resolve to successful Stellar testnet transactions. |
 | Standalone `signAuthEntry` | Verified | Pollar signed the non-source wallet authorization, a distinct transient account signed the envelope, enforce-mode simulation passed, and Round 35 succeeded in ledger 5579176. |
 | Public community package | Published | Version `0.1.0` is public on npm; registry metadata, tarball integrity, clean installation and both documented exports were verified after publication. |
-| Pollar developer listing | Pending | Alejandro's proposed listing must be linked after release. |
+| Pollar developer listing | Verified | Pollar's official [community integrations guide](https://docs.pollar.xyz/docs/guides/community-integrations#sub-rosa-adapter) lists the Sub Rosa-maintained adapter, package, source, and testnet/ReceiptOnly scope. |
 | Independent production adoption | Not claimed | A testnet adapter is not customer adoption or economic volume. |
 
 ## Supported `0.1.0` scope
@@ -271,8 +271,10 @@ original transaction hashes remain unchanged.
 
 ## Remaining follow-up
 
-1. Obtain Pollar's technical acceptance/listing URL. Alejandro's intent is not
-   itself evidence that the adapter has been listed.
+1. Preserve Pollar's official
+   [community integrations listing](https://docs.pollar.xyz/docs/guides/community-integrations#sub-rosa-adapter)
+   as the primary public evidence. The page identifies the adapter as
+   community-maintained and does not imply Pollar core ownership or support.
 2. Track fixes for the inherited Stellar SDK dependency advisories noted above
    and update through a separately tested patch release when compatible fixes
    are available.

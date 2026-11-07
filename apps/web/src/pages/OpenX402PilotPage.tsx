@@ -842,7 +842,7 @@ export function OpenX402PilotPage({ goHome }: OpenX402PilotPageProps) {
         {workspace.mode === "live" && workspace.transactionHashes.length > 0 && <section className="pilot-results-panel openx402-tx-panel"><div className="pilot-panel-heading"><div><span>Sub Rosa transaction evidence</span><strong>REAL {STELLAR_NETWORK.toUpperCase()}</strong></div><ExternalLink size={18} /></div><div className="pilot-results"><div className="pilot-result"><dl>{workspace.transactionHashes.map((hash) => <div key={hash}><dt>Stellar transaction</dt><dd><a href={stellarExpertTxLink(hash)} target="_blank" rel="noreferrer"><code>{short(hash, 10)}</code></a></dd></div>)}</dl></div></div></section>}
       </section>
 
-      <footer className="signal-pilot-footer"><span><ShieldCheck size={14} />OpenX402 × Sub Rosa pilot</span><span>ReceiptOnly sealed competition · application selection · typed payment handoff</span><a href="https://docs.openx402.ai" target="_blank" rel="noreferrer">OpenX402 docs <ExternalLink size={13} /></a></footer>
+      <footer className="signal-pilot-footer"><span><ShieldCheck size={14} />OpenX402 × Sub Rosa pilot</span><span>ReceiptOnly sealed competition · application selection · typed payment handoff</span><a href="https://github.com/openx402" target="_blank" rel="noreferrer">OpenX402 profile <ExternalLink size={13} /></a></footer>
     </main>
   );
 }
