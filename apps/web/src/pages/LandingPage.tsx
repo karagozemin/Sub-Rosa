@@ -1,4 +1,5 @@
-import { motion, useReducedMotion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { DEMO_TRACE } from "../demo/trace";
 import { USE_CASES, type UseCaseId } from "../config/useCases";
@@ -25,6 +26,8 @@ const staggerParent = {
     },
   },
 };
+
+const ECOSYSTEM_HINT_STORAGE_KEY = "sub-rosa:ecosystem-hint-dismissed";
 
 function linkTarget(link: EcosystemLink) {
   return link.external ? { target: "_blank", rel: "noreferrer" } : {};
@@ -109,6 +112,45 @@ export function LandingPage({
   onCase: (useCase: UseCaseId) => void;
 }) {
   const reduce = useReducedMotion();
+  const [showScrollCue, setShowScrollCue] = useState(true);
+  const [ecosystemOpen, setEcosystemOpen] = useState(false);
+  const [ecosystemHintDismissed, setEcosystemHintDismissed] = useState(() => {
+    if (typeof window === "undefined") return true;
+
+    try {
+      return window.localStorage.getItem(ECOSYSTEM_HINT_STORAGE_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    const updateScrollCue = () => setShowScrollCue(window.scrollY < 96);
+
+    updateScrollCue();
+    window.addEventListener("scroll", updateScrollCue, { passive: true });
+    return () => window.removeEventListener("scroll", updateScrollCue);
+  }, []);
+
+  const scrollToOverview = () => {
+    document.getElementById("product-overview")?.scrollIntoView({
+      behavior: reduce ? "auto" : "smooth",
+      block: "start",
+    });
+  };
+
+  const toggleEcosystem = () => {
+    if (!ecosystemOpen && !ecosystemHintDismissed) {
+      setEcosystemHintDismissed(true);
+      try {
+        window.localStorage.setItem(ECOSYSTEM_HINT_STORAGE_KEY, "true");
+      } catch {
+        // The hint still stays dismissed for this page view when storage is unavailable.
+      }
+    }
+
+    setEcosystemOpen((open) => !open);
+  };
 
   const transition = reduce
     ? { duration: 0 }
@@ -267,7 +309,22 @@ export function LandingPage({
         </motion.div>
       </motion.section>
 
+      <motion.button
+        type="button"
+        className="landing-scroll-cue"
+        aria-label="Scroll to explore Sub Rosa"
+        onClick={scrollToOverview}
+        initial={false}
+        animate={{ opacity: showScrollCue ? 1 : 0, x: "-50%", y: showScrollCue ? 0 : 12 }}
+        transition={{ duration: reduce ? 0 : 0.24 }}
+        style={{ pointerEvents: showScrollCue ? "auto" : "none" }}
+      >
+        <span>Scroll to explore</span>
+        <ChevronDown aria-hidden="true" size={15} strokeWidth={2} />
+      </motion.button>
+
       <motion.section
+        id="product-overview"
         className="pilot-banner"
         initial={{ opacity: 0, y: 16 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -326,8 +383,14 @@ export function LandingPage({
           ))}
         </motion.div>
 
-        <details className="ecosystem-disclosure">
-          <summary>
+        <section className={`ecosystem-disclosure${ecosystemOpen ? " open" : ""}`}>
+          <button
+            type="button"
+            className="ecosystem-disclosure-toggle"
+            aria-expanded={ecosystemOpen}
+            aria-controls="ecosystem-all-partners"
+            onClick={toggleEcosystem}
+          >
             <span className="ecosystem-disclosure-copy">
               <strong>Explore all integrations &amp; collaborations</strong>
               <small>
@@ -335,18 +398,39 @@ export function LandingPage({
               </small>
             </span>
             <span className="ecosystem-disclosure-action" aria-hidden="true">
+              {!ecosystemHintDismissed ? (
+                <span className="ecosystem-click-hint">
+                  <img src="/ui/click-hand.png" alt="" />
+                </span>
+              ) : null}
               <b className="ecosystem-action-collapsed">Open full ecosystem</b>
               <b className="ecosystem-action-expanded">Close ecosystem</b>
               <em>+{ADDITIONAL_ECOSYSTEM_PARTNERS.length}</em>
               <ChevronDown className="ecosystem-disclosure-chevron" size={16} strokeWidth={2} />
             </span>
-          </summary>
-          <div className="ecosystem-compact-grid">
-            {ADDITIONAL_ECOSYSTEM_PARTNERS.map((partner) => (
-              <CompactPartner key={partner.id} partner={partner} />
-            ))}
-          </div>
-        </details>
+          </button>
+          <AnimatePresence initial={false}>
+            {ecosystemOpen ? (
+              <motion.div
+                id="ecosystem-all-partners"
+                className="ecosystem-compact-reveal"
+                initial={{ height: 0, opacity: 0, y: -6 }}
+                animate={{ height: "auto", opacity: 1, y: 0 }}
+                exit={{ height: 0, opacity: 0, y: -4 }}
+                transition={{
+                  duration: reduce ? 0 : 0.36,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+              >
+                <div className="ecosystem-compact-grid">
+                  {ADDITIONAL_ECOSYSTEM_PARTNERS.map((partner) => (
+                    <CompactPartner key={partner.id} partner={partner} />
+                  ))}
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </section>
       </section>
 
       <section className="landing-cases-section">

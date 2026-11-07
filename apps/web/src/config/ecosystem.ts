@@ -259,6 +259,19 @@ export const FEATURED_ECOSYSTEM_PARTNERS = ECOSYSTEM_PARTNERS.filter(
   (partner) => partner.featured,
 );
 
+const ADDITIONAL_ECOSYSTEM_ORDER = [
+  "octarine",
+  "kutana",
+  "trustless-work",
+  "the-signal",
+  "acta",
+  "openx402",
+] as const;
+
 export const ADDITIONAL_ECOSYSTEM_PARTNERS = ECOSYSTEM_PARTNERS.filter(
   (partner) => !partner.featured,
+).sort(
+  (left, right) =>
+    ADDITIONAL_ECOSYSTEM_ORDER.indexOf(left.id as (typeof ADDITIONAL_ECOSYSTEM_ORDER)[number]) -
+    ADDITIONAL_ECOSYSTEM_ORDER.indexOf(right.id as (typeof ADDITIONAL_ECOSYSTEM_ORDER)[number]),
 );
