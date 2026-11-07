@@ -93,6 +93,10 @@ test("docs route and navigation use the canonical hash", () => {
     page: "docs",
     useCase: "auction",
   });
+  assert.deepEqual(routeFromHash("#/docs/receipts"), {
+    page: "docs",
+    useCase: "auction",
+  });
   assert.equal(hashFor("docs"), "#/docs");
 });
 

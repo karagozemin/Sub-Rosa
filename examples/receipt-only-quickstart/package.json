@@ -1,0 +1,23 @@
+{
+  "name": "@sub-rosa/receipt-only-quickstart",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Runnable Stellar Testnet ReceiptOnly quickstart for @sub-rosa/sdk.",
+  "scripts": {
+    "check": "pnpm run typecheck && pnpm run test",
+    "generate-keypair": "tsx src/generate-keypair.ts",
+    "live": "tsx --env-file=.env src/index.ts",
+    "test": "node --import tsx --test src/quickstart.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^15.1.0",
+    "@sub-rosa/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}
