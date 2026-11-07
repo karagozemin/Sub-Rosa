@@ -910,6 +910,9 @@ export function DocsPage({ goHome }: { goHome: () => void }) {
                 const reference = "referenceKey" in entry ? partner[entry.referenceKey] : undefined;
                 const demo = "demoKey" in entry ? partner[entry.demoKey] : undefined;
                 const pilot = "pilotId" in entry ? pilotById.get(entry.pilotId) : undefined;
+                const pilotAlreadyLinked = pilot
+                  ? [source, reference, demo].some((link) => link?.href === pilot.href)
+                  : false;
                 return (
                   <article className="docs-integration-card" key={entry.id}>
                     <header><div><span>{entry.mode}</span><h3>{partner.name}</h3></div><em className={`tone-${partner.statusTone}`}>{partner.statusLabel}</em></header>
@@ -920,7 +923,7 @@ export function DocsPage({ goHome }: { goHome: () => void }) {
                       {source && <a href={source.href} target={source.external ? "_blank" : undefined} rel={source.external ? "noreferrer" : undefined}>{source.label}<ExternalLink size={12} /></a>}
                       {reference && <a href={reference.href} target={reference.external ? "_blank" : undefined} rel={reference.external ? "noreferrer" : undefined}>{reference.label}<ExternalLink size={12} /></a>}
                       {demo && <a href={demo.href} target={demo.external ? "_blank" : undefined} rel={demo.external ? "noreferrer" : undefined}>{demo.label}<ExternalLink size={12} /></a>}
-                      {pilot && <a href={pilot.href}>Open Sub Rosa pilot<ArrowRight size={12} /></a>}
+                      {pilot && !pilotAlreadyLinked && <a href={pilot.href}>Open Sub Rosa pilot<ArrowRight size={12} /></a>}
                     </div>
                   </article>
                 );
