@@ -18,6 +18,85 @@ For cryptographic and settlement detail, see
 [docs/TECH_DESIGN.md](./docs/TECH_DESIGN.md). For adversaries and residual
 risk, see [docs/THREAT_MODEL.md](./docs/THREAT_MODEL.md).
 
+## SCF #46 — Proposed Architecture Improvements
+
+SCF #46 is an incremental hardening, integration, and validation effort around
+the implemented architecture below. It does not assume a new protocol, a
+partner-specific contract, or that proposed security and adoption milestones
+are already complete. The scope follows the current
+[platform plan](./docs/PLATFORM_PLAN.md), [pilot playbook](./docs/PILOT_PLAYBOOK.md),
+[threat model](./docs/THREAT_MODEL.md), and [known limitations](./docs/LIMITATIONS.md).
+
+| Area | Implemented today | Proposed SCF #46 improvement |
+| --- | --- | --- |
+| Protocol and security | Core v2 `Auction` and `ReceiptOnly`, deterministic tests, capped deployments, preflight, refunds, and void paths; no independent funds-handling audit is claimed | Independent review of funds-handling paths, prioritized remediation, and explicit release gates for conservation, authorization, storage, replay/context binding, and worst-case resources |
+| Operations | Permissionless keeper calls, retry suppression, status API, and public round reads | Production monitoring for RPC/Drand health and stalled lifecycle phases, actionable alerts, retry evidence, and an incident-response runbook |
+| Partner integrations | Hosted pilots, published SDK templates, generated bindings, canonical receipts, and documented partner-owned boundaries | A repeatable integration and acceptance path that records setup effort, code changes, public round evidence, verification results, feedback, and a partner go/no-go decision |
+| Receipt and release evidence | Deterministic offline receipt verification and pinned deployment metadata | Stronger ledger-backed receipt provenance and reproducible release evidence without expanding what offline verification claims |
+| Economic validation | Tested atomic Auction settlement and capped protocol proofs | One value-capped Auction pilot using a real auctionable Stellar lot, external participants, and published settlement/refund evidence; no partner or mainnet commitment is assumed |
+
+```mermaid
+flowchart LR
+  subgraph CURRENT["Implemented today — reused"]
+    PARTNER5["Partner UX and wallet"] --> SDK5["Published SDK templates"]
+    SDK5 --> TLOCK5["Existing tlock sealing"]
+    SDK5 --> CORE5["Core v2 Round contract"]
+    TLOCK5 --> CORE5
+    DRAND5["Drand"] --> CORE5
+    KEEPER5["Permissionless keeper"] --> CORE5
+    CORE5 --> RECEIPT5["Canonical receipt"]
+  end
+
+  subgraph PROPOSED["SCF #46 — proposed improvements"]
+    REVIEW5["Independent security review<br/>and remediation gates"]
+    OPS5["Monitoring, alerts,<br/>retries, and runbooks"]
+    INTEGRATION5["Reusable partner acceptance<br/>and verification evidence"]
+    PILOT5["Value-capped Auction pilot<br/>with external participants"]
+    PROVENANCE5["Ledger-backed receipt and<br/>release provenance"]
+  end
+
+  REVIEW5 -. validates .-> CORE5
+  OPS5 -. hardens .-> KEEPER5
+  INTEGRATION5 -. reuses .-> SDK5
+  PILOT5 -. exercises .-> CORE5
+  PROVENANCE5 -. strengthens .-> RECEIPT5
+
+  classDef implemented fill:#14251f,stroke:#65d6a6,color:#f4fff9;
+  classDef proposed fill:#2b2340,stroke:#b99cff,color:#fbf8ff;
+  class PARTNER5,SDK5,TLOCK5,CORE5,DRAND5,KEEPER5,RECEIPT5 implemented;
+  class REVIEW5,OPS5,INTEGRATION5,PILOT5,PROVENANCE5 proposed;
+```
+
+The reuse baseline is the existing Core v2 lifecycle and modes, the published
+`@sub-rosa/sdk`, `@sub-rosa/tlock`, and generated bindings, the permissionless
+keeper authority model, canonical receipt schema, network/deployment pinning,
+and hosted/native integration paths. Partner discovery, identity, eligibility,
+`ReceiptOnly` business selection, and downstream payment remain outside Sub
+Rosa. `Auction` continues to use only its reviewed custody and atomic
+payment-for-lot path; arbitrary settlement callbacks and partner-specific forks
+are not proposed. A security finding may require a narrow remediation, but the
+milestone does not presume a replacement contract or an unreviewed extension.
+
+The proposed economic pilot follows the existing playbook: one seller deposits
+a value-capped lot, at least three external bidders use the same
+contract-enforced fixed escrow, Drand opens reveal, the contract clears and
+settles the winner, losing and unused escrow is reconciled, and the public
+record includes network, contract and round IDs, transaction evidence, a
+verified receipt, participant feedback, and the partner's written next-step or
+no-go decision. Testnet is sufficient for the first validation; any capped
+Mainnet pilot remains gated on independent funds-handling review and explicit
+value limits.
+
+| Risk or question | Gate before claiming success | Measurable validation evidence |
+| --- | --- | --- |
+| Asset conservation, authorization, settlement, and refunds | Independent review of the funds path; findings that affect safety block promotion until remediated or explicitly bounded | Contract tests and pilot records show payment and lot conservation, exact winner payment, correct refunds, and no unintended terminal contract balance |
+| Ciphertext/commitment linkage, non-reveal incentives, and context replay | Obtain an explicit security disposition and implement only the reviewed mitigation; do not describe an open hypothesis as solved | Review record plus the resulting regression, fuzz, or specified-invariant evidence selected for that mitigation |
+| Twenty-five-participant resource margin and seal TTL | Benchmark the supported maximum with intended SAC assets and prove seal availability through the reveal window | Preflight CPU, memory, ledger footprint, read/write, transaction-size, fee, and TTL measurements with margin against current network limits |
+| Keeper, RPC, or Drand interruption | Preserve permissionless progression and exercise monitoring, retry, duplicate-suppression, and incident-response procedures | Alerts identify stalled phases and incomplete reveals; recovery evidence records retries, final status, and any void/refund path |
+| Reusable integration quality | Use the existing hosted, SDK-template, or operations path without a protocol fork | Clean package installation, measured integration time and code changes, public round/receipt verification, external feedback, and a recorded partner decision |
+| Auction demand and economic correctness | Complete the value-capped pilot with external participants; do not count an internal demo or hosted workspace as adoption | At least three external bidders, published escrow/settlement/refund results, a public receipt, defects found, and repeat-round intent or an explicit no-go |
+| Receipt and release provenance | Pin network, contract ID, and WASM hash and preserve reproducible build/release evidence | Independent re-export or ledger reconciliation agrees with the receipt, and release artifacts reproduce the reviewed deployment metadata |
+
 ## 1. System position
 
 The following diagram is the architectural boundary. The partner owns the
