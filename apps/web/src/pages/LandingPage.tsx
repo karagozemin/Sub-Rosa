@@ -27,8 +27,6 @@ const staggerParent = {
   },
 };
 
-const ECOSYSTEM_HINT_STORAGE_KEY = "sub-rosa:ecosystem-hint-dismissed";
-
 function linkTarget(link: EcosystemLink) {
   return link.external ? { target: "_blank", rel: "noreferrer" } : {};
 }
@@ -114,15 +112,7 @@ export function LandingPage({
   const reduce = useReducedMotion();
   const [showScrollCue, setShowScrollCue] = useState(true);
   const [ecosystemOpen, setEcosystemOpen] = useState(false);
-  const [ecosystemHintDismissed, setEcosystemHintDismissed] = useState(() => {
-    if (typeof window === "undefined") return true;
-
-    try {
-      return window.localStorage.getItem(ECOSYSTEM_HINT_STORAGE_KEY) === "true";
-    } catch {
-      return false;
-    }
-  });
+  const [ecosystemHintDismissed, setEcosystemHintDismissed] = useState(false);
 
   useEffect(() => {
     const updateScrollCue = () => setShowScrollCue(window.scrollY < 96);
@@ -142,11 +132,6 @@ export function LandingPage({
   const toggleEcosystem = () => {
     if (!ecosystemOpen && !ecosystemHintDismissed) {
       setEcosystemHintDismissed(true);
-      try {
-        window.localStorage.setItem(ECOSYSTEM_HINT_STORAGE_KEY, "true");
-      } catch {
-        // The hint still stays dismissed for this page view when storage is unavailable.
-      }
     }
 
     setEcosystemOpen((open) => !open);
