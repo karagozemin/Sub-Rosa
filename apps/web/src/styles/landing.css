@@ -978,20 +978,39 @@
 }
 
 .ecosystem-disclosure {
+  position: relative;
   margin-top: 14px;
-  border: 1px solid var(--line-1);
+  border: 1px solid rgba(91, 108, 255, 0.34);
   border-radius: var(--radius-lg);
-  background: rgba(18, 23, 31, 0.62);
+  background:
+    linear-gradient(90deg, rgba(91, 108, 255, 0.1), transparent 42%),
+    rgba(18, 23, 31, 0.72);
   box-shadow: var(--shadow-sm);
+  animation: ecosystem-attention 4.8s var(--ease-in-out) infinite;
+  transition:
+    border-color 180ms var(--ease),
+    background 180ms var(--ease),
+    box-shadow 180ms var(--ease);
+}
+
+.ecosystem-disclosure:hover,
+.ecosystem-disclosure:focus-within,
+.ecosystem-disclosure[open] {
+  border-color: rgba(91, 108, 255, 0.58);
+  background:
+    linear-gradient(90deg, rgba(91, 108, 255, 0.14), transparent 46%),
+    rgba(18, 23, 31, 0.82);
+  box-shadow: 0 14px 42px rgba(26, 23, 72, 0.22);
+  animation: none;
 }
 
 .ecosystem-disclosure summary {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
   align-items: center;
-  min-height: 62px;
-  padding: 0 20px;
+  min-height: 76px;
+  padding: 10px 14px 10px 20px;
   color: var(--ink-2);
   font-size: 0.92rem;
   font-weight: 650;
@@ -1003,7 +1022,33 @@
   display: none;
 }
 
-.ecosystem-disclosure summary small {
+.ecosystem-disclosure-copy {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  padding-left: 19px;
+  color: var(--ink-1);
+}
+
+.ecosystem-disclosure-copy::before {
+  position: absolute;
+  top: 7px;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--green);
+  box-shadow: 0 0 0 0 rgba(91, 108, 255, 0.42);
+  content: "";
+  animation: ecosystem-dot-pulse 2.4s var(--ease-out) infinite;
+}
+
+.ecosystem-disclosure-copy strong {
+  font-size: 0.96rem;
+  letter-spacing: -0.01em;
+}
+
+.ecosystem-disclosure-copy small {
   color: var(--faint);
   font-family: var(--mono);
   font-size: 0.68rem;
@@ -1011,14 +1056,121 @@
   letter-spacing: 0.03em;
 }
 
-.ecosystem-disclosure summary i {
-  color: var(--green);
+.ecosystem-disclosure-action {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 9px 7px 15px;
+  border: 1px solid rgba(143, 154, 255, 0.6);
+  border-radius: 12px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #6878ff, #4f5ee8);
+  box-shadow: 0 10px 28px rgba(74, 86, 225, 0.28);
+  transition:
+    transform 180ms var(--ease),
+    box-shadow 180ms var(--ease);
+}
+
+.ecosystem-disclosure:hover .ecosystem-disclosure-action,
+.ecosystem-disclosure:focus-within .ecosystem-disclosure-action {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 34px rgba(74, 86, 225, 0.4);
+}
+
+.ecosystem-disclosure-action b {
+  font-size: 0.78rem;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.ecosystem-disclosure-action em {
+  display: grid;
+  min-width: 30px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 0.67rem;
   font-style: normal;
+  background: rgba(7, 10, 24, 0.2);
+}
+
+.ecosystem-action-expanded {
+  display: none;
+}
+
+.ecosystem-disclosure[open] .ecosystem-action-collapsed {
+  display: none;
+}
+
+.ecosystem-disclosure[open] .ecosystem-action-expanded {
+  display: inline;
+}
+
+.ecosystem-disclosure-chevron {
+  flex: 0 0 auto;
+  color: #ffffff;
+  opacity: 0.82;
+  animation: ecosystem-chevron 2.4s var(--ease-in-out) infinite;
   transition: transform 180ms var(--ease);
 }
 
-.ecosystem-disclosure[open] summary i {
+.ecosystem-disclosure[open] .ecosystem-disclosure-chevron {
   transform: rotate(180deg);
+  animation: none;
+}
+
+.ecosystem-disclosure:hover .ecosystem-disclosure-copy::before,
+.ecosystem-disclosure:focus-within .ecosystem-disclosure-copy::before,
+.ecosystem-disclosure[open] .ecosystem-disclosure-copy::before,
+.ecosystem-disclosure:hover .ecosystem-disclosure-chevron,
+.ecosystem-disclosure:focus-within .ecosystem-disclosure-chevron {
+  animation: none;
+}
+
+@keyframes ecosystem-attention {
+  0%,
+  72%,
+  100% {
+    box-shadow: var(--shadow-sm);
+  }
+  84% {
+    box-shadow:
+      0 0 0 1px rgba(91, 108, 255, 0.18),
+      0 12px 38px rgba(58, 45, 150, 0.24);
+  }
+}
+
+@keyframes ecosystem-dot-pulse {
+  0%,
+  45%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(91, 108, 255, 0.42);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(91, 108, 255, 0);
+  }
+}
+
+@keyframes ecosystem-chevron {
+  0%,
+  55%,
+  100% {
+    transform: translateY(0);
+  }
+  70% {
+    transform: translateY(3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ecosystem-disclosure,
+  .ecosystem-disclosure .ecosystem-disclosure-copy::before,
+  .ecosystem-disclosure .ecosystem-disclosure-chevron {
+    animation: none;
+  }
 }
 
 .ecosystem-compact-grid {
@@ -1305,11 +1457,18 @@ button.case-card-link strong {
   }
 
   .ecosystem-disclosure summary {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 15px;
   }
 
   .ecosystem-disclosure summary small {
     display: none;
+  }
+
+  .ecosystem-disclosure-action {
+    width: 100%;
+    justify-content: center;
   }
 
   .ecosystem-compact-grid {

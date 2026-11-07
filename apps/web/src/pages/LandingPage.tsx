@@ -1,4 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
+import { ChevronDown } from "lucide-react";
 import { DEMO_TRACE } from "../demo/trace";
 import { USE_CASES, type UseCaseId } from "../config/useCases";
 import {
@@ -327,9 +328,18 @@ export function LandingPage({
 
         <details className="ecosystem-disclosure">
           <summary>
-            <span>View all integrations &amp; collaborations</span>
-            <small>{ADDITIONAL_ECOSYSTEM_PARTNERS.length} additional pilots and collaboration paths</small>
-            <i aria-hidden="true">⌄</i>
+            <span className="ecosystem-disclosure-copy">
+              <strong>Explore all integrations &amp; collaborations</strong>
+              <small>
+                {ADDITIONAL_ECOSYSTEM_PARTNERS.length} more pilots and collaboration paths · Select to expand
+              </small>
+            </span>
+            <span className="ecosystem-disclosure-action" aria-hidden="true">
+              <b className="ecosystem-action-collapsed">Open full ecosystem</b>
+              <b className="ecosystem-action-expanded">Close ecosystem</b>
+              <em>+{ADDITIONAL_ECOSYSTEM_PARTNERS.length}</em>
+              <ChevronDown className="ecosystem-disclosure-chevron" size={16} strokeWidth={2} />
+            </span>
           </summary>
           <div className="ecosystem-compact-grid">
             {ADDITIONAL_ECOSYSTEM_PARTNERS.map((partner) => (
