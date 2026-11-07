@@ -808,8 +808,8 @@
 
 .landing-partner-logo.pollar {
   background:
-    radial-gradient(circle at 50% 42%, rgba(91, 108, 255, 0.28), transparent 55%),
-    #090b12;
+    radial-gradient(circle at 50% 34%, rgba(102, 190, 255, 0.34), transparent 54%),
+    linear-gradient(135deg, #12365d 0%, #071421 72%);
 }
 
 .landing-partner-logo.pollar img {
@@ -849,10 +849,14 @@
   height: 116px;
 }
 
+.landing-partner-logo.offer-hub {
+  background: #ffffff;
+}
+
 .landing-partner-logo.cosmos-pay {
   background:
-    radial-gradient(circle at 50% 44%, rgba(91, 108, 255, 0.2), transparent 54%),
-    #090b12;
+    radial-gradient(circle at 50% 40%, rgba(137, 99, 255, 0.3), transparent 55%),
+    linear-gradient(135deg, #1b1233 0%, #090a12 74%);
 }
 
 .landing-partner-logo.cosmos-pay img {
