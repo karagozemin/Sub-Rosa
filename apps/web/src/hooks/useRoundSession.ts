@@ -36,7 +36,7 @@ import {
 import { DEMO_TRACE } from "../demo/trace";
 import { formatCountdown, useDrandCountdown } from "./useDrandCountdown";
 import { useToast } from "../ui/Toast";
-import { hasCommittedEntry } from "../lib/round-session-state";
+import { getRevealedCount, hasCommittedEntry } from "../lib/round-session-state";
 
 export type ActionStatus = "idle" | "working" | "ok" | "error";
 
@@ -50,6 +50,8 @@ export interface CaseSession {
   roundId: bigint | null;
   auditorPublicKey: Uint8Array | null;
   commitValue: bigint | null;
+  /** Reveals whose transactions succeeded, retained while RPC reads catch up. */
+  confirmedRevealCount: number;
   /** Off-chain copy of the tlock ciphertext; fallback if Temporary seal storage expired. */
   sealedCiphertext: Uint8Array | null;
   /** Timestamp (ms) when the round was created locally; powers cohort animations. */
@@ -63,6 +65,7 @@ function emptySession(roundId: bigint | null = null): CaseSession {
     roundId,
     auditorPublicKey: null,
     commitValue: null,
+    confirmedRevealCount: 0,
     sealedCiphertext: null,
     roundCreatedAt: null,
     live: null,
@@ -90,8 +93,16 @@ export function useRoundSession(active: UseCase) {
   );
   const contract = useWalletContract(address);
   const session = sessions[active.id];
-  const { auditorPublicKey, commitValue, sealedCiphertext, live, log, roundId, roundCreatedAt } =
-    session;
+  const {
+    auditorPublicKey,
+    commitValue,
+    confirmedRevealCount,
+    sealedCiphertext,
+    live,
+    log,
+    roundId,
+    roundCreatedAt,
+  } = session;
   const canUseContract = Boolean(CONTRACT_ID && contract);
   const targetRound = live ? Number(live.round.reveal_round) : DEMO_TRACE.meta.revealRound;
   const drandGate = useDrandCountdown(targetRound);
@@ -104,9 +115,10 @@ export function useRoundSession(active: UseCase) {
     commitValue,
     bidStates: live?.bidStates,
   });
-  const revealedCount = live
-    ? Object.values(live.bidStates).filter((state) => state.revealed_value != null).length
-    : 0;
+  const revealedCount = getRevealedCount({
+    bidStates: live?.bidStates,
+    confirmedRevealCount,
+  });
 
   useEffect(() => {
     setEntryValue(active.defaultValue);
@@ -211,6 +223,7 @@ export function useRoundSession(active: UseCase) {
         auditorPublicKey: auditor.publicKey,
         roundCreatedAt: Date.now(),
         commitValue: null,
+        confirmedRevealCount: 0,
         sealedCiphertext: null,
         live: null,
       });
@@ -265,6 +278,7 @@ export function useRoundSession(active: UseCase) {
         auditorPublicKey: new Uint8Array(round.auditor_pubkey),
         roundCreatedAt: Date.now(),
         commitValue: null,
+        confirmedRevealCount: 0,
         sealedCiphertext: null,
         live: null,
       });
@@ -420,6 +434,9 @@ export function useRoundSession(active: UseCase) {
             : "All bids are already revealed.",
         );
       }
+      updateSession(id, {
+        confirmedRevealCount: revealedCount + revealed,
+      });
       setStatus("ok");
       const msg = `${revealed} entr${revealed === 1 ? "y" : "ies"} opened permissionlessly`;
       push(msg, id);
