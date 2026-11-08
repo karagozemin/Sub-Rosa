@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --import tsx --test src/demo/trace-health-check.test.ts src/lib/config.test.ts src/config/routing.test.ts src/dashboard/fixture-health-check.test.ts src/lib/round-status.test.ts src/lib/pilotConcurrency.test.ts src/lib/pilotReveal.test.ts src/lib/pilotSubmission.test.ts src/lib/offerHubPilot.test.ts src/lib/actaPilot.test.ts src/integrations/acta/index.test.ts src/integrations/trustless-work/index.test.ts src/integrations/openx402/index.test.ts src/components/dashboard/RoundStatusCard.test.tsx",
+    "test": "node --import tsx --test src/demo/trace-health-check.test.ts src/lib/config.test.ts src/config/routing.test.ts src/dashboard/fixture-health-check.test.ts src/lib/round-status.test.ts src/lib/round-session-state.test.ts src/lib/pilotConcurrency.test.ts src/lib/pilotReveal.test.ts src/lib/pilotSubmission.test.ts src/lib/offerHubPilot.test.ts src/lib/actaPilot.test.ts src/integrations/acta/index.test.ts src/integrations/trustless-work/index.test.ts src/integrations/openx402/index.test.ts src/components/dashboard/RoundStatusCard.test.tsx",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

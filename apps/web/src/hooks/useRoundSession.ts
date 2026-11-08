@@ -36,6 +36,7 @@ import {
 import { DEMO_TRACE } from "../demo/trace";
 import { formatCountdown, useDrandCountdown } from "./useDrandCountdown";
 import { useToast } from "../ui/Toast";
+import { hasCommittedEntry } from "../lib/round-session-state";
 
 export type ActionStatus = "idle" | "working" | "ok" | "error";
 
@@ -98,8 +99,11 @@ export function useRoundSession(active: UseCase) {
     ? Math.max(0, Number(live.round.commit_deadline) - Math.floor(Date.now() / 1000))
     : null;
   const commitClosed = commitSecondsRemaining != null && commitSecondsRemaining <= 0;
-  const committedOnChain = Boolean(address && live?.bidStates[address]);
-  const committed = committedOnChain || (commitValue != null && live == null);
+  const committed = hasCommittedEntry({
+    address,
+    commitValue,
+    bidStates: live?.bidStates,
+  });
   const revealedCount = live
     ? Object.values(live.bidStates).filter((state) => state.revealed_value != null).length
     : 0;
